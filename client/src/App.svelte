@@ -33,7 +33,6 @@
 
     let bulk_apply_active = $derived($AppStore.currentPage === 'bulk_apply');
     let find_sample_active = $derived($AppStore.currentPage === 'find_sample');
-    $inspect(bulk_apply_active, find_sample_active);
 </script>
 
 <div class="toaster-wrapper">

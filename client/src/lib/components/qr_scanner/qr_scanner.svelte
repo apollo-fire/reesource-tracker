@@ -12,7 +12,7 @@
         containerId = 'qr-reader',
         autoStart = $bindable(false),
         flipFrontCamera = $bindable(true),
-        onQrCodeScan = $bindable((text: string) => {}),
+        onQrCodeScan = $bindable((_: string) => {}),
     } = $props();
     let allowCamera = $state(
         localStorage.getItem('qrScannerCameraOn') === 'true',

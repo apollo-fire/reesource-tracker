@@ -11,7 +11,6 @@
 
     async function updateQRCode() {
         if (value) {
-            // @ts-ignore
             QRCode.toDataURL(value, {
                 margin: 0,
                 errorCorrectionLevel: 'L',
