@@ -216,14 +216,15 @@
     );
 
     $effect(() => {
-        selectedLocation ||
+        const _ =
+            selectedLocation ||
             selectedProduct ||
             modQuery ||
             selectedState ||
             showUnassignedOrArchived ||
             issueQuery ||
             ownerQuery ||
-            moddedState;
+            moddedState; // Effect dependencies
 
         page = 1; // Reset to first page when filters change
     });
