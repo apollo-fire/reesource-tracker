@@ -1,12 +1,11 @@
 <script lang="ts">
     import QrScanner from 'qr-scanner';
-    import { onDestroy, onMount } from 'svelte';
+    import { onDestroy, onMount, tick } from 'svelte';
 
     import { Label } from '$lib/components/ui/label';
     import * as Select from '$lib/components/ui/select/index.js';
     import { Switch } from '$lib/components/ui/switch/index.js';
 
-    let videoContainer: HTMLDivElement | null = $state(null);
     let videoInputs: MediaDeviceInfo[] = $state([]);
     let {
         selectedVideoInput = $bindable(''),
@@ -15,26 +14,24 @@
         flipFrontCamera = $bindable(true),
         onQrCodeScan = $bindable((text: string) => {}),
     } = $props();
-    let videoInputError: string = $state('');
     let allowCamera = $state(
         localStorage.getItem('qrScannerCameraOn') === 'true',
     );
+
+    let videoElement: HTMLVideoElement | null = $state(null);
+    let flipVideo = $state(false);
+    let showVideo = $state(false);
+    let videoInputError: string = $state('');
+
     let qrScanner: QrScanner | null = null;
-    let videoElement: HTMLVideoElement | null = null;
+
+    $inspect(videoElement);
 
     async function startScanner() {
         if (videoElement) return;
-        if (!videoContainer) return;
-        videoContainer.innerHTML = '';
-        videoElement = document.createElement('video');
-        videoElement.setAttribute('autoplay', 'true');
-        videoElement.setAttribute('playsinline', 'true');
-        videoElement.classList.add(
-            'max-h-full',
-            'max-w-full',
-            'rounded-lg',
-            'shadow',
-        );
+        showVideo = true;
+        await tick(); // wait for svelte to render the current application state
+        if (!videoElement) return;
         // Flip preview if front-facing camera is selected
         if (flipFrontCamera && videoInputs && selectedVideoInput) {
             const selectedDevice = videoInputs.find(
@@ -44,20 +41,16 @@
                 selectedDevice &&
                 /front|user|integrated/i.test(selectedDevice.label)
             ) {
-                videoElement.style.transform = 'scaleX(-1)';
+                flipVideo = true;
             } else {
-                videoElement.style.transform = '';
+                flipVideo = false;
             }
         }
-
-        videoContainer.appendChild(videoElement);
-
         // Stop any previous scanner
         if (qrScanner) {
             qrScanner.destroy();
             qrScanner = null;
         }
-
         qrScanner = new QrScanner(
             videoElement,
             (result) => {
@@ -84,24 +77,19 @@
         await qrScanner.start();
     }
 
-    function stopScanner() {
+    async function stopScanner() {
         if (qrScanner) {
             qrScanner.destroy();
             qrScanner = null;
         }
-        if (videoElement && videoElement.srcObject) {
-            const tracks = (videoElement.srcObject as MediaStream).getTracks();
-            tracks.forEach((track) => track.stop());
-            videoElement.srcObject = null;
-        }
-        videoElement = null;
-        if (videoContainer) videoContainer.innerHTML = '';
+        showVideo = false;
+        await tick();
     }
 
     async function restartScanner() {
         if (localStorage.getItem('qrScannerCameraOn') === 'true') {
             allowCamera = true;
-            stopScanner();
+            await stopScanner();
             await startScanner();
         } else {
             allowCamera = false;
@@ -124,7 +112,7 @@
                 videoInputError = 'No video input devices found.';
                 selectedVideoInput = '';
             }
-        } catch (e) {
+        } catch (_e) {
             videoInputError = 'Unable to enumerate video devices.';
             videoInputs = [];
             selectedVideoInput = '';
@@ -161,7 +149,23 @@
 </script>
 
 <div class="flex flex-col items-center justify-center">
-    <div id={containerId} bind:this={videoContainer} class="h-[20vh]"></div>
+    <div id={containerId} class="h-[20vh]">
+        {#if showVideo}
+            <video
+                autoplay
+                playsinline
+                class="max-h-full max-w-full rounded-lg shadow"
+                bind:this={videoElement}
+                style={flipVideo ? 'transform: scaleX(-1);' : ''}>
+                <track
+                    kind="captions"
+                    src=""
+                    srcLang="en"
+                    label="English"
+                    default />
+            </video>
+        {/if}
+    </div>
     <p class="text-sm text-gray-500 mt-6">
         QR Codes are scanned and processed locally on your device. No data is
         sent to the server.
@@ -177,7 +181,7 @@
                         ?.label ||
                         `Camera ${selectedVideoInput}`}</Select.Trigger>
                 <Select.Content>
-                    {#each videoInputs as device}
+                    {#each videoInputs as device (device.deviceId)}
                         <Select.Item value={device.deviceId}>
                             {device.label || `Camera ${device.deviceId}`}
                         </Select.Item>
