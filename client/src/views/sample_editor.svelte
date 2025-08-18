@@ -86,7 +86,7 @@
                 toast.success('Mod added successfully.');
             }
         } catch (e) {
-            add_mod_error = 'Failed to add mod.';
+            add_mod_error = `Failed to add mod (${e})`;
         }
         adding_mod = false;
     }

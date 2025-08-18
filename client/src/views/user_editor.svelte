@@ -1,5 +1,6 @@
 <script lang="ts">
     import { toast } from 'svelte-sonner';
+    import { SvelteMap } from 'svelte/reactivity';
 
     import { AppStore } from '$lib/components/app_store';
     import { SampleState } from '$lib/components/sample';
@@ -16,7 +17,7 @@
     } from '$lib/components/ui/table';
     import type { User } from '$lib/components/user';
 
-    let updateTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+    let updateTimeouts: SvelteMap<string, NodeJS.Timeout> = new SvelteMap();
     async function updateUser(user: User) {
         const payload = { name: user.name };
         const res = await fetch(`/api/user/${user.id}`, {

@@ -35,7 +35,7 @@
             } else {
                 toast.error('Scanned QR code is not for this host.');
             }
-        } catch (e) {
+        } catch (_) {
             toast.error('Scanned QR code is not a valid URL.');
         }
     }

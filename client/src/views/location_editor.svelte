@@ -1,5 +1,6 @@
 <script lang="ts">
     import { toast } from 'svelte-sonner';
+    import { SvelteMap } from 'svelte/reactivity';
 
     import { AppStore } from '$lib/components/app_store';
     import type { SampleLocation } from '$lib/components/location';
@@ -16,7 +17,7 @@
         TableRow,
     } from '$lib/components/ui/table';
 
-    let updateTimeouts = new Map();
+    let updateTimeouts: SvelteMap<string, NodeJS.Timeout> = new SvelteMap();
     // Store for parent location IDs, since it needs a string value for Select
     let parent_location_id: { [key: string]: string } = $state({});
 

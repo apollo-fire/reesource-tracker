@@ -12,7 +12,6 @@
 
     let numSamples = $state(1);
     let generating = $state(false);
-    let error = $state('');
     let printouts: { timestamp: number; ids: string[] }[] = $state([]);
     let currentSheet: string[] = $state([]);
     let showPrintOverlay = $state(false);
@@ -120,7 +119,6 @@
 
     async function generateSamples(e: SubmitEvent) {
         e.preventDefault(); // Prevent default form submission
-        error = '';
         generating = true;
         toast.loading('Generating samples...');
         const res = await fetch(

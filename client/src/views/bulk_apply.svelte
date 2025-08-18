@@ -33,7 +33,7 @@
             if (param && /^[0-9A-Z]{2}-[0-9A-Z]{2}-[0-9A-Z]{2}$/i.test(param)) {
                 sampleId = param.toUpperCase();
             }
-        } catch (e) {
+        } catch (_) {
             // Not a valid URL, fallback to direct code
             if (/^[0-9A-Z]{2}-[0-9A-Z]{2}-[0-9A-Z]{2}$/i.test(text)) {
                 sampleId = text.toUpperCase();

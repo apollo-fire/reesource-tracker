@@ -112,7 +112,7 @@
                 videoInputError = 'No video input devices found.';
                 selectedVideoInput = '';
             }
-        } catch (_e) {
+        } catch (_) {
             videoInputError = 'Unable to enumerate video devices.';
             videoInputs = [];
             selectedVideoInput = '';
