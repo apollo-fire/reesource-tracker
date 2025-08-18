@@ -66,19 +66,19 @@
                     id="id-input">
                     {#snippet children({ cells })}
                         <InputOTP.Group>
-                            {#each cells.slice(0, 2) as cell}
+                            {#each cells.slice(0, 2) as cell (cell)}
                                 <InputOTP.Slot cell={cell} />
                             {/each}
                         </InputOTP.Group>
                         <InputOTP.Separator />
                         <InputOTP.Group>
-                            {#each cells.slice(2, 4) as cell}
+                            {#each cells.slice(2, 4) as cell (cell)}
                                 <InputOTP.Slot cell={cell} />
                             {/each}
                         </InputOTP.Group>
                         <InputOTP.Separator />
                         <InputOTP.Group>
-                            {#each cells.slice(4, 6) as cell}
+                            {#each cells.slice(4, 6) as cell (cell)}
                                 <InputOTP.Slot cell={cell} />
                             {/each}
                         </InputOTP.Group>

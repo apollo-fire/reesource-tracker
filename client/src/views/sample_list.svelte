@@ -397,7 +397,7 @@
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {#each paginatedSamples() as sample, i}
+                            {#each paginatedSamples() as sample, i (sample.id)}
                                 <Table.Row
                                     bind:ref={
                                         () => firstRow,

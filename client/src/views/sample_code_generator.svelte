@@ -203,7 +203,7 @@
         </Card.Header>
         <Card.Content>
             <div class="flex flex-row max-w-full overflow-x-auto gap-8">
-                {#each printouts as p, i}
+                {#each printouts as p, i (p.ids)}
                     <Card.Root class="w-[32em]">
                         <Card.Header>
                             <Card.Title>
@@ -308,7 +308,7 @@
                 <div
                     class="qr-sheet print-sheet-only"
                     style="--grid-slot-size: {gridSlotPx}; --qr-svg-size: {qrSvgPx}; --qr-gap: {qrPadPx}; --grid-cols: {gridCols}; --grid-rows: {gridRows};">
-                    {#each previewSheet as id, i}
+                    {#each previewSheet as id, i (id)}
                         <div class="qr-item">
                             {#if previewSheet[i]}
                                 <QrCode value={GetSampleUrl(previewSheet[i])} />
@@ -336,7 +336,7 @@
         <div
             class="qr-sheet print-sheet-only"
             style="--grid-slot-size: {gridSlotPx}; --qr-svg-size: {qrSvgPx}; --qr-gap: {qrPadPx};">
-            {#each currentSheet as id}
+            {#each currentSheet as id (id)}
                 <div class="qr-item">
                     <QrCode value={GetSampleUrl(id)} />
                     <div class="qr-id" style="font-size: {fontSize}mm;"

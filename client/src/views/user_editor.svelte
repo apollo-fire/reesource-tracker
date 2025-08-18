@@ -84,7 +84,7 @@
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
-                            {#each valid_states as state_type}
+                            {#each valid_states as state_type (state_type)}
                                 <TableHead class="capitalise"
                                     >Samples {state_type.replace(
                                         '_',
@@ -111,7 +111,7 @@
                                         placeholder="User Name" />
                                 </TableCell>
 
-                                {#each valid_states as state_type}
+                                {#each valid_states as state_type (state_type)}
                                     <TableCell>
                                         {user.AssignedSamples[state_type] || 0}
                                     </TableCell>

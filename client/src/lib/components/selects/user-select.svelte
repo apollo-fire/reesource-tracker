@@ -61,11 +61,11 @@
             <Select.Item value="">None</Select.Item>
         {/if}
         {#if options.length > 0}
-            {#each options.filter((option) => !filterOutIds.includes(option.value) && option.label !== '') as option}
+            {#each options.filter((option) => !filterOutIds.includes(option.value) && option.label !== '') as option (option.value)}
                 <Select.Item value={option.value}>{option.label}</Select.Item>
             {/each}
         {:else}
-            {#each users.filter((user) => !filterOutIds.includes(user.id) && user.name !== '') as user}
+            {#each users.filter((user) => !filterOutIds.includes(user.id) && user.name !== '') as user (user.id)}
                 <Select.Item value={user.id}>{user.name}</Select.Item>
             {/each}
         {/if}

@@ -74,7 +74,7 @@
             : placeholder}
     </Select.Trigger>
     <Select.Content class="w-full">
-        {#each filteredOptions as option}
+        {#each filteredOptions as option (option.value)}
             <Select.Item value={option.value}>{option.label}</Select.Item>
         {/each}
     </Select.Content>

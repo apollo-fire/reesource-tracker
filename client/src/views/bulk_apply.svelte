@@ -235,19 +235,19 @@
                         disabled={modLoading}>
                         {#snippet children({ cells })}
                             <InputOTP.Group>
-                                {#each cells.slice(0, 2) as cell}
+                                {#each cells.slice(0, 2) as cell (cell)}
                                     <InputOTP.Slot cell={cell} />
                                 {/each}
                             </InputOTP.Group>
                             <InputOTP.Separator />
                             <InputOTP.Group>
-                                {#each cells.slice(2, 4) as cell}
+                                {#each cells.slice(2, 4) as cell (cell)}
                                     <InputOTP.Slot cell={cell} />
                                 {/each}
                             </InputOTP.Group>
                             <InputOTP.Separator />
                             <InputOTP.Group>
-                                {#each cells.slice(4, 6) as cell}
+                                {#each cells.slice(4, 6) as cell (cell)}
                                     <InputOTP.Slot cell={cell} />
                                 {/each}
                             </InputOTP.Group>
@@ -403,7 +403,7 @@
                         </div>
                         {#if modNames.length > 0}
                             <div class="flex flex-wrap gap-2 pb-2 flex-grow">
-                                {#each modNames as mod, i}
+                                {#each modNames as mod, i (i)}
                                     <Badge variant="outline">
                                         {mod}
                                         <Button
@@ -447,7 +447,7 @@
                 <div class="text-muted-foreground">No samples scanned yet.</div>
             {:else}
                 <div class="flex flex-row flex-wrap gap-2">
-                    {#each scannedIds as id}
+                    {#each scannedIds as id (id)}
                         <Badge variant="outline" class="mb-2"
                             >{id}
                             <Button

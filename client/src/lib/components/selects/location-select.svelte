@@ -68,7 +68,7 @@
     <Select.Content class="w-full">
         <Select.Item value="">None</Select.Item>
         {#if options.length > 0}
-            {#each options.filter((option) => !filterOutIds.includes(option.value)) as option}
+            {#each options.filter((option) => !filterOutIds.includes(option.value)) as option (option.value)}
                 <Select.Item value={option.value}>{option.label}</Select.Item>
             {/each}
         {:else}
