@@ -25,8 +25,6 @@
 
     let qrScanner: QrScanner | null = null;
 
-    $inspect(videoElement);
-
     async function startScanner() {
         if (videoElement) return;
         showVideo = true;
