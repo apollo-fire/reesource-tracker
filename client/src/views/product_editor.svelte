@@ -17,7 +17,10 @@
         TableRow,
     } from '$lib/components/ui/table';
 
-    let updateTimeouts: SvelteMap<string, NodeJS.Timeout> = new SvelteMap();
+    let updateTimeouts: SvelteMap<
+        string,
+        ReturnType<typeof setTimeout>
+    > = new SvelteMap();
     // Store for parent product IDs, since it needs a string value for Select
     let parent_product_id: { [key: string]: string } = $state({});
 

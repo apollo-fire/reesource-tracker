@@ -17,7 +17,10 @@
     } from '$lib/components/ui/table';
     import type { User } from '$lib/components/user';
 
-    let updateTimeouts: SvelteMap<string, NodeJS.Timeout> = new SvelteMap();
+    let updateTimeouts: SvelteMap<
+        string,
+        ReturnType<typeof setTimeout>
+    > = new SvelteMap();
     async function updateUser(user: User) {
         const payload = { name: user.name };
         const res = await fetch(`/api/user/${user.id}`, {
