@@ -2,6 +2,7 @@ package samples
 
 import (
 	"database/sql"
+	"math"
 	"net/http"
 	"reesource-tracker/api/samples/mods"
 	"reesource-tracker/api/sync"
@@ -19,6 +20,8 @@ type SampleData struct {
 	database.ListSamplesRow
 	Mods []database.SampleMod `json:"mods"`
 }
+
+const MAX_PROVISIONED_SAMPLES = 1000
 
 func Routes(route *gin.RouterGroup) {
 	route.GET("/samples", getSamples)
@@ -162,6 +165,7 @@ func generateUniqueSamples(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid number of samples"})
 		return
 	}
+	numSamples = int(math.Min(float64(numSamples), float64(MAX_PROVISIONED_SAMPLES)))
 	sample_ids := make([]string, numSamples)
 	for i := 0; i < numSamples; i++ {
 		new_id_string, new_id, err := sampleid.GenerateNewSampleID()

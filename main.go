@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reesource-tracker/api"
 	"reesource-tracker/lib/database"
 	"runtime"
@@ -24,6 +25,7 @@ func main() {
 	if devmode {
 		r = gin.Default() // includes Logger and Recovery
 	} else {
+		gin.SetMode(gin.ReleaseMode)
 		r = gin.New() // no Logger
 		r.Use(gin.Recovery())
 	}
@@ -33,10 +35,24 @@ func main() {
 	} else {
 		println("Serving frontend static files")
 		r.LoadHTMLGlob("./client/*.html")
+		safePath, err := filepath.Abs("./client")
+		if err != nil {
+			println("Could not resolve client path:", err)
+			return
+		}
 		r.GET("/app/*path", func(c *gin.Context) {
 			path := c.Param("path")
 			// Check if the first segment is "assets"
 			segments := strings.SplitN(path, "/", 3)
+			absPath, err := filepath.Abs(filepath.Join(safePath, path))
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
 			if len(segments) > 1 && segments[1] == "assets" {
 				c.File("./client" + path)
 				return
@@ -55,6 +71,7 @@ func main() {
 		r.Run("localhost:80")
 	} else {
 		r.Run("0.0.0.0:80")
+		println("Server started on port 80")
 	}
 }
 
