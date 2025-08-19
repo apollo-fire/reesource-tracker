@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { cn, type WithElementRef } from "$lib/utils.js";
-  import type { HTMLTdAttributes } from "svelte/elements";
+    import type { HTMLTdAttributes } from 'svelte/elements';
 
-  let {
-    ref = $bindable(null),
-    class: className,
-    children,
-    ...restProps
-  }: WithElementRef<HTMLTdAttributes> = $props();
+    import { type WithElementRef, cn } from '$lib/utils.js';
+
+    let {
+        ref = $bindable(null),
+        class: className,
+        children,
+        ...restProps
+    }: WithElementRef<HTMLTdAttributes> = $props();
 </script>
 
 <td
-  bind:this={ref}
-  data-slot="table-cell"
-  class={cn(
-    "whitespace-nowrap px-2 align-middle [&:has([role=checkbox])]:pr-0",
-    className
-  )}
-  {...restProps}
->
-  {@render children?.()}
+    bind:this={ref}
+    data-slot="table-cell"
+    class={cn(
+        'whitespace-nowrap px-2 align-middle [&:has([role=checkbox])]:pr-0',
+        className,
+    )}
+    {...restProps}>
+    {@render children?.()}
 </td>

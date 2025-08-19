@@ -1,0 +1,33 @@
+name: Lint Client
+
+on:
+  push:
+    paths:
+      - "**/client/**"
+  pull_request:
+    paths:
+      - "**/client/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run ESLint
+        run: bun lint
