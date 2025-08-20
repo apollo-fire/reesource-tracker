@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -45,7 +46,10 @@ func main() {
 		})
 
 	}
-	database.Connect(context.Background())
+	err := database.Connect(context.Background())
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err.Error())
+	}
 	api.Routes(r)
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusPermanentRedirect, "/app")

@@ -10,7 +10,7 @@ var Connection *Queries
 
 const DATABASE_LOCATION = "database/db.sqlite"
 
-func Connect(ctx context.Context) {
+func Connect(ctx context.Context) error {
 	migration_dir := "file://database/migrations"
 	if _, err := os.Stat("migrations"); err == nil {
 		migration_dir = "file://migrations"
@@ -18,13 +18,14 @@ func Connect(ctx context.Context) {
 	db, m, err := sqlite_driver.Connect(ctx, migration_dir, DATABASE_LOCATION)
 	if err != nil {
 		println("Got error", err.Error())
-		return
+		return err
 	}
 	Connection = New(db)
 
 	err = m.Up()
 	if err != nil && err.Error() != "no change" {
 		println("Error applying migration", err.Error())
-		return
+		return err
 	}
+	return nil
 }
