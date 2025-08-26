@@ -151,7 +151,6 @@
         form.append("state", state);
         form.append("owner_id", ownerId);
         form.append("product_issue", issue);
-        console.log(Array.from(form.entries()));
         const res = await fetch(`/api/sample/${id}`, {
           method: "POST",
           body: form,
