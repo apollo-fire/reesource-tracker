@@ -38,14 +38,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+      - name: Set up bun
+        uses: oven-sh/setup-bun@v1
       - name: Install license-checker
-        run: npm install -g license-checker
+        run: bun install -g license-checker
       - name: Install npm dependencies
-        run: npm install
+        run: bun install
       - name: Generate npm license report (CSV)
         run: license-checker --csv --out npm-licenses.csv
         continue-on-error: true
