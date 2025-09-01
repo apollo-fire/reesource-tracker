@@ -44,6 +44,8 @@ jobs:
           node-version: "20"
       - name: Install license-checker
         run: npm install -g license-checker
+      - name: Install npm dependencies
+        run: npm install
       - name: Generate npm license report (CSV)
         run: license-checker --csv --out npm-licenses.csv
         continue-on-error: true

@@ -28,8 +28,8 @@ if [[ "$TYPE" == "go" ]]; then
   fi
 elif [[ "$TYPE" == "npm" ]]; then
   echo "Checking npm dependency licenses for compatibility (CSV format)..."
-  # license-checker CSV: module name,path,license,repository, publisher,email,url
-  INCOMPATIBLE=$(awk -F, 'NR>1 {print $3}' "$REPORT_FILE" | grep -Ev "$COMPATIBLE_LICENSES" | sort | uniq)
+  # npm CSV: module name,license,repository
+  INCOMPATIBLE=$(awk -F, 'NR>1 {print $2}' "$REPORT_FILE" | grep -Ev "$COMPATIBLE_LICENSES" | sort | uniq)
   if [ -n "$INCOMPATIBLE" ]; then
     echo "::error::Found incompatible npm dependency licenses:"
     echo "$INCOMPATIBLE"
