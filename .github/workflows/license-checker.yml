@@ -1,0 +1,89 @@
+# License Checker Workflow
+
+name: License Checker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gather-go-licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses@latest
+      - name: Generate Go license report
+        run: |
+          go-licenses check ./...
+          go-licenses report ./... > go-licenses.csv
+        continue-on-error: true
+      - name: Upload Go license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-licenses-report
+          path: go-licenses.csv
+
+  gather-npm-licenses:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install license-checker
+        run: npm install -g license-checker
+      - name: Generate npm license report (CSV)
+        run: license-checker --csv --out npm-licenses.csv
+        continue-on-error: true
+      - name: Upload npm license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-licenses-report
+          path: client/npm-licenses.csv
+
+  check-license-compatibility:
+    runs-on: ubuntu-latest
+    needs: [gather-go-licenses, gather-npm-licenses]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download Go license report
+        uses: actions/download-artifact@v4
+        with:
+          name: go-licenses-report
+      - name: Download npm license report
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-licenses-report
+      - name: Install yq
+        run: sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && sudo chmod +x /usr/local/bin/yq
+      - name: Check license compatibility
+        env:
+          COMPATIBLE_LICENSES_YAML: |
+            - GPL-3.0
+            - LGPL-3.0
+            - MIT
+            - BSD
+            - Apache-2.0
+            - ISC
+            - MPL-2.0
+            - CC0-1.0
+            - Unlicense
+        run: |
+          chmod +x ./check_license_compatibility.sh
+          COMPATIBLE_LICENSES=$(echo "$COMPATIBLE_LICENSES_YAML" | yq e '.[]' - | paste -sd'|' -)
+          ./check_license_compatibility.sh go-licenses.csv "$COMPATIBLE_LICENSES" go
+          ./check_license_compatibility.sh client/npm-licenses.csv "$COMPATIBLE_LICENSES" npm
