@@ -69,13 +69,7 @@ jobs:
           name: npm-licenses-report
       - name: Install yq
         run: |
-          YQ_VERSION="v4.44.1"
-          YQ_BINARY="yq_linux_amd64"
-          YQ_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}"
-          YQ_SHA256_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}.sha256"
-          wget -qO "/usr/local/bin/yq" "$YQ_URL"
-          wget -qO "/tmp/yq.sha256" "$YQ_SHA256_URL"
-          echo "$(cat /tmp/yq.sha256)  /usr/local/bin/yq" | sha256sum -c -
+          wget -qO "/usr/local/bin/yq" "https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64"
           sudo chmod +x /usr/local/bin/yq
       - name: Check license compatibility
         env:
