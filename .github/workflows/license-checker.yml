@@ -14,16 +14,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
+
       - name: Install go-licenses
         run: go install github.com/google/go-licenses@latest
+
+      - name: Install go dependencies
+        run: go mod download
+
       - name: Generate Go license report
         run: |
-          go-licenses report reesource-tracker > go-licenses.csv
+          go-licenses report . > go-licenses.csv
         continue-on-error: true
+
       - name: Upload Go license report
         uses: actions/upload-artifact@v4
         with:
@@ -82,7 +89,8 @@ jobs:
             - ISC
             - MPL-2.0
             - CC0-1.0
-            - Unlicense
+            - UNLICENSED
+            - BlueOak-1.0.0
         run: |
           chmod +x ./check_license_compatibility.sh
           COMPATIBLE_LICENSES=$(echo "$COMPATIBLE_LICENSES_YAML" | yq e '.[]' - | paste -sd'|' -)
