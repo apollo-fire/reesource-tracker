@@ -28,7 +28,7 @@ jobs:
 
       - name: Generate Go license report
         run: |
-          go-licenses report . > go-licenses.csv
+          go tool go-licenses report . > go-licenses.csv
         continue-on-error: true
 
       - name: Upload Go license report
