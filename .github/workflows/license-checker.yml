@@ -24,7 +24,7 @@ jobs:
         run: go get -tool github.com/google/go-licenses/v2@latest
 
       - name: Install go dependencies
-        run: go mod download
+        run: go mod tidy
 
       - name: Generate Go license report
         run: |
