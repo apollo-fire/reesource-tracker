@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5.0.0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -32,7 +32,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Go license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: go-licenses-report
           path: go-licenses.csv
@@ -44,7 +44,7 @@ jobs:
         working-directory: ./client
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5.0.0
       - name: Set up bun
         uses: oven-sh/setup-bun@v1
       - name: Install license-checker
@@ -55,7 +55,7 @@ jobs:
         run: license-checker --csv --out npm-licenses.csv
         continue-on-error: true
       - name: Upload npm license report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: npm-licenses-report
           path: client/npm-licenses.csv
@@ -65,13 +65,13 @@ jobs:
     needs: [gather-go-licenses, gather-npm-licenses]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5.0.0
       - name: Download Go license report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5.0.0
         with:
           name: go-licenses-report
       - name: Download npm license report
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5.0.0
         with:
           name: npm-licenses-report
       - name: Install yq
