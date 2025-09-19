@@ -44,17 +44,17 @@ func main() {
 			path := c.Param("path")
 			// Check if the first segment is "assets"
 			segments := strings.SplitN(path, "/", 3)
-			absPath, err := filepath.Abs(filepath.Join(safePath, path))
-			if err != nil {
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
 			if len(segments) > 1 && segments[1] == "assets" {
-				c.File("./client" + path)
+				absPath, err := filepath.Abs(filepath.Join(safePath, path))
+				if err != nil {
+					c.AbortWithStatus(http.StatusInternalServerError)
+					return
+				}
+				if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+					c.AbortWithStatus(http.StatusForbidden)
+					return
+				}
+				c.File(absPath)
 				return
 			}
 			c.HTML(http.StatusOK, "index.html", gin.H{})
