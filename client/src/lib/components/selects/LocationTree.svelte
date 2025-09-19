@@ -10,9 +10,9 @@
     filterMode = false,
   }: {
     locations: SampleLocation[];
-    filterOutIds: string[];
-    level: number;
-    filterMode: boolean;
+    filterOutIds?: string[];
+    level?: number;
+    filterMode?: boolean;
   } = $props();
 </script>
 
