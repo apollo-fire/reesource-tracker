@@ -9,12 +9,11 @@ on:
       - "**/client/**"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   lint:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -9,12 +9,13 @@ on:
       - "client/package.json"
       - "client/bun.lock"
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   prettier:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     defaults:
       run:
