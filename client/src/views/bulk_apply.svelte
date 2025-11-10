@@ -1,6 +1,7 @@
 <script lang="ts">
     import { toast } from 'svelte-sonner';
 
+    import { AppStore } from '$lib/components/app_store';
     import QRScanner from '$lib/components/qr_scanner/qr_scanner.svelte';
     import LocationSelect from '$lib/components/selects/location-select.svelte';
     import ProductSelect from '$lib/components/selects/product-select.svelte';
@@ -18,6 +19,7 @@
     let scannedIds: string[] = $state([]);
     let selectedProduct = $state('');
     let selectedLocation = $state('');
+
     let sampleState = $state('');
 
     let { active = $bindable(false) } = $props();
@@ -127,17 +129,19 @@
                 !updateOwner ||
                 !updateProductIssue
             ) {
-                const res = await fetch(`/api/sample/${id}`);
-                if (res.ok) {
+                const existing_sample = $AppStore.samples.find(
+                    (s) => s.id === id,
+                );
+                if (existing_sample) {
                     sampleFetched = true;
-                    const data = await res.json();
-                    if (!updateProduct) productId = data.sample.ProductID || '';
+                    if (!updateProduct)
+                        productId = existing_sample.Product?.id || '';
                     if (!updateLocation)
-                        locationId = data.sample.LocationID || '';
-                    if (!updateState) state = data.sample.State || '';
-                    if (!updateOwner) ownerId = data.sample.OwnerID || '';
+                        locationId = existing_sample.Location?.id || '';
+                    if (!updateState) state = existing_sample.state || '';
+                    if (!updateOwner) ownerId = existing_sample.Owner?.id || '';
                     if (!updateProductIssue)
-                        issue = data.sample.ProductIssue || '';
+                        issue = existing_sample.productIssue || '';
                 }
             }
             // If sample not found and state is not configured, fallback to 'available'
@@ -177,13 +181,18 @@
             }
         }
         let msg = [];
-        if ((updateProduct || updateLocation || updateState) && errors === 0) {
-            msg.push('Changes applied to all scanned samples.');
-        } else if (
-            (updateProduct || updateLocation || updateState) &&
-            errors > 0
+        if (
+            updateProduct ||
+            updateLocation ||
+            updateState ||
+            updateOwner ||
+            updateProductIssue
         ) {
-            msg.push(`Some updates failed (${errors} errors).`);
+            if (errors === 0) {
+                msg.push('Changes applied to all scanned samples.');
+            } else {
+                msg.push(`Some updates failed (${errors} errors).`);
+            }
         }
         if (modNames.length > 0) {
             if (modErrors === 0) {
