@@ -91,6 +91,7 @@ jobs:
             - CC0-1.0
             - UNLICENSED
             - BlueOak-1.0.0
+            - Python-2.0
         run: |
           chmod +x ./check_license_compatibility.sh
           COMPATIBLE_LICENSES=$(echo "$COMPATIBLE_LICENSES_YAML" | yq e '.[]' - | paste -sd'|' -)
