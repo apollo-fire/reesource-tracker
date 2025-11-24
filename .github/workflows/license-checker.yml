@@ -67,7 +67,7 @@ jobs:
       - name: Install npm dependencies
         run: bun install
       - name: Generate npm license report (CSV)
-        run: license-checker --csv --exclude reesource-tracker-client --out npm-licenses.csv
+        run: license-checker --csv --excludePrivatePackages --out npm-licenses.csv
         continue-on-error: true
       - name: Upload npm license report
         uses: actions/upload-artifact@v4.6.2
