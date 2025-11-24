@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "sample-tracker-client",
+      "name": "reesource-tracker-client",
       "dependencies": {
         "lucide-svelte": "^0.525.0",
         "qr-scanner": "^1.4.2",
