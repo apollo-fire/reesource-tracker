@@ -2,16 +2,29 @@
   import * as Select from "../ui/select";
   import { AppStore } from "$lib/components/app_store";
   import type { User } from "$lib/components/user";
-  export let bindValue: string;
-  export let disabled: boolean = false;
-  export let placeholder: string = "Select a user";
-  export let id: string = "user-select";
-  export let required: boolean = false;
-  export let options: { value: string; label: string }[] = [];
-  export let onValueChange: (value: string) => void = () => {};
-  export let filterOutIds: string[] = [];
-  export let filterMode: boolean = false;
-  let users: User[] = [];
+  let {
+    bindValue = $bindable(""),
+    disabled = false,
+    placeholder = "Select a user",
+    id = "user-select",
+    required = false,
+    options = [],
+    onValueChange = () => {},
+    filterOutIds = [],
+    filterMode = false,
+  }: {
+    bindValue?: string;
+    disabled?: boolean;
+    placeholder?: string;
+    id?: string;
+    required?: boolean;
+    options?: { value: string; label: string }[];
+    onValueChange?: (value: string) => void;
+    filterOutIds?: string[];
+    filterMode?: boolean;
+  } = $props();
+
+  let users: User[] = $state([]);
 
   AppStore.subscribe((new_val) => {
     users = new_val.users ?? [];
