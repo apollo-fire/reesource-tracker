@@ -1,9 +1,31 @@
 <script lang="ts">
-    import { AppStore } from '$lib/components/app_store';
-    import type { SampleProduct } from '$lib/components/product';
+  import ProductTree from "./ProductTree.svelte";
+  import * as Select from "../ui/select";
+  import { AppStore } from "$lib/components/app_store";
+  import type { SampleProduct } from "$lib/components/product";
+  let {
+    bindValue = $bindable(""),
+    disabled = false,
+    placeholder = "Select a product",
+    id = "product-select",
+    required = false,
+    options = [],
+    onValueChange = () => {},
+    filterMode = false,
+    filterOutIds = [],
+  }: {
+    bindValue?: string;
+    disabled?: boolean;
+    placeholder?: string;
+    id?: string;
+    required?: boolean;
+    options?: { value: string; label: string }[];
+    onValueChange?: (value: string) => void;
+    filterMode?: boolean;
+    filterOutIds?: string[];
+  } = $props();
 
-    import * as Select from '../ui/select';
-    import ProductTree from './ProductTree.svelte';
+  let top_level_products: SampleProduct[] = $state([]);
 
     let {
         bindValue = $bindable(''),
