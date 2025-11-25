@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"math"
 	"net/http"
-	"reesource-tracker/api/samples/mods"
+	"reesource-tracker/api/samples/sample_mods"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	id_helper "reesource-tracker/lib/id_helper"
@@ -28,7 +28,7 @@ func Routes(route *gin.RouterGroup) {
 	route.GET("/sample/:sample_id", getSample)
 	route.POST("/sample/:sample_id", updateSample)
 	route.GET("/generate_samples", generateUniqueSamples)
-	mods.Routes(route.Group("/sample/:sample_id/mods"))
+	sample_mods.Routes(route.Group("/sample/:sample_id/mods"))
 }
 
 func getSample(c *gin.Context) {
@@ -95,41 +95,44 @@ func updateSample(c *gin.Context) {
 	}
 	RawSampleID := rawID[:]
 
-	// Marshal location_id and product_id to binary ([]byte)
-	locationID := c.PostForm("location_id")
-	locationBinary, locErrMsg, locOK := id_helper.MustParseAndMarshalUUID(locationID)
+	type updateSampleRequest struct {
+		LocationID   string `json:"location_id"`
+		ProductID    string `json:"product_id"`
+		OwnerID      string `json:"owner_id"`
+		ProductIssue string `json:"product_issue"`
+		State        string `json:"state"`
+	}
+	var req updateSampleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
+	locationBinary, locErrMsg, locOK := id_helper.MustParseAndMarshalUUID(req.LocationID)
 	if !locOK {
 		c.JSON(http.StatusBadRequest, gin.H{"error": locErrMsg})
 		return
 	}
-
-	productID := c.PostForm("product_id")
-	productBinary, prodErrMsg, prodOK := id_helper.MustParseAndMarshalUUID(productID)
+	productBinary, prodErrMsg, prodOK := id_helper.MustParseAndMarshalUUID(req.ProductID)
 	if !prodOK {
 		c.JSON(http.StatusBadRequest, gin.H{"error": prodErrMsg})
 		return
 	}
-
-	ownerID := c.PostForm("owner_id")
-	ownerBinary, ownerErrMsg, ownerOK := id_helper.MustParseAndMarshalUUID(ownerID)
+	ownerBinary, ownerErrMsg, ownerOK := id_helper.MustParseAndMarshalUUID(req.OwnerID)
 	if !ownerOK {
 		c.JSON(http.StatusBadRequest, gin.H{"error": ownerErrMsg})
 		return
 	}
-
-	productIssue := c.PostForm("product_issue")
-
 	current_time := time.Now()
-
 	res, err := database.Connection.UpdateOrCreateSample(c, database.UpdateOrCreateSampleParams{
 		ID:             RawSampleID,
 		LocationID:     locationBinary,
 		ProductID:      productBinary,
 		OwnerID:        ownerBinary,
-		ProductIssue:   sql.NullString{String: productIssue, Valid: true},
+		ProductIssue:   sql.NullString{String: req.ProductIssue, Valid: true},
 		TimeRegistered: sql.NullTime{Time: current_time, Valid: true},
 		LastUpdate:     sql.NullTime{Time: current_time, Valid: true},
-		State:          c.PostForm("state"),
+		State:          req.State,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

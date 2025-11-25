@@ -15,8 +15,8 @@ const FOREIGN_KEY_PRAGMA = "PRAGMA foreign_keys = ON;"
 const JOURNAL_MODE_PRAGMA = "PRAGMA journal_mode=WAL;"
 const DRIVER_NAME = "sqlite"
 
-func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migrate, error) {
-	db, err := sql.Open(DRIVER_NAME, "database/db.sqlite")
+func Connect(ctx context.Context, migration_dir string, database_location string) (*sql.DB, *migrate.Migrate, error) {
+	db, err := sql.Open(DRIVER_NAME, database_location)
 	if err != nil {
 		return nil, nil, err
 	}
