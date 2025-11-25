@@ -1,31 +1,9 @@
 <script lang="ts">
-  import LocationTree from "./LocationTree.svelte";
-  import * as Select from "../ui/select";
-  import { AppStore } from "$lib/components/app_store";
-  import type { SampleLocation } from "$lib/components/location";
-  let {
-    bindValue = $bindable(""),
-    disabled = false,
-    placeholder = "Select a location",
-    id = "location-select",
-    required = false,
-    options = [],
-    onValueChange = () => {},
-    filterMode = false,
-    filterOutIds = [],
-  }: {
-    bindValue?: string;
-    disabled?: boolean;
-    placeholder?: string;
-    id?: string;
-    required?: boolean;
-    options?: { value: string; label: string }[];
-    onValueChange?: (value: string) => void;
-    filterMode?: boolean;
-    filterOutIds?: string[];
-  } = $props();
+    import { AppStore } from '$lib/components/app_store';
+    import type { SampleLocation } from '$lib/components/location';
 
-  let top_level_locations: SampleLocation[] = $state([]);
+    import * as Select from '../ui/select';
+    import LocationTree from './LocationTree.svelte';
 
     let {
         bindValue = $bindable(''),

@@ -1,19 +1,20 @@
 <script lang="ts">
-  import * as Select from "$lib/components/ui/select";
-  import type { SampleProduct } from "$lib/components/product";
-  import ProductTree from "./ProductTree.svelte";
+    import type { SampleProduct } from '$lib/components/product';
+    import * as Select from '$lib/components/ui/select';
 
-  let {
-    products,
-    filterOutIds = [],
-    level = 0,
-    filterMode = false,
-  }: {
-    products: SampleProduct[];
-    filterOutIds?: string[];
-    level?: number;
-    filterMode?: boolean;
-  } = $props();
+    import ProductTree from './ProductTree.svelte';
+
+    let {
+        products,
+        filterOutIds = [],
+        level = 0,
+        filterMode = false,
+    }: {
+        products: SampleProduct[];
+        filterOutIds?: string[];
+        level?: number;
+        filterMode?: boolean;
+    } = $props();
 </script>
 
 {#each products as product (product.id)}
