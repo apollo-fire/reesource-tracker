@@ -114,11 +114,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
-        if: github.ref == 'refs/heads/main'
         with:
           context: .
           file: Dockerfile
-          push: true
+          push: ${{ github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64
           tags: |
             ${{ format('ghcr.io/{0}/reesource-tracker:latest', github.repository) }}
