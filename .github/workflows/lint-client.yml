@@ -9,6 +9,8 @@ on:
       - "**/client/**"
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   lint:
     permissions:
