@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS users (
-    id BLOB(16) PRIMARY KEY NOT NULL,
+    id BYTEA PRIMARY KEY NOT NULL,
     name VARCHAR(100) NOT NULL
 );
 
 ALTER TABLE samples
-ADD COLUMN owner_id BLOB(16) REFERENCES users (id);
+ADD COLUMN owner_id BYTEA REFERENCES users (id);
 
 ALTER TABLE samples
 ADD COLUMN product_issue VARCHAR(4);
@@ -12,22 +12,22 @@ ADD COLUMN product_issue VARCHAR(4);
 ALTER TABLE products ADD COLUMN part_number VARCHAR(64);
 
 CREATE TABLE IF NOT EXISTS sample_comments (
-    id BLOB(16) PRIMARY KEY NOT NULL,
-    sample_id BLOB(4) NOT NULL REFERENCES samples (id),
+    id BYTEA PRIMARY KEY NOT NULL,
+    sample_id BYTEA NOT NULL REFERENCES samples (id),
     comment TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id BLOB(16) PRIMARY KEY NOT NULL,
+    id BYTEA PRIMARY KEY NOT NULL,
     name VARCHAR(64) NOT NULL UNIQUE,
     removable BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS applied_tags (
-    id BLOB(16) PRIMARY KEY NOT NULL,
-    sample_id BLOB(4) NOT NULL REFERENCES samples (id),
-    tag_id BLOB(16) NOT NULL REFERENCES sample_tags (id),
+    id BYTEA PRIMARY KEY NOT NULL,
+    sample_id BYTEA NOT NULL REFERENCES samples (id),
+    tag_id BYTEA NOT NULL REFERENCES sample_tags (id),
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_removed TIMESTAMP DEFAULT NULL
 );
