@@ -16,8 +16,18 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
    go mod tidy
    ```
 2. **Database setup:**
-   - SQLite is used by default. The database file is at `database/db.sqlite`.
-   - To initialize or migrate the schema, use the SQL files in `database/schema.sql`.
+   - **SQLite (default):** The database file is at `database/db.sqlite`. No additional setup required.
+   - **PostgreSQL:** Set environment variables to use PostgreSQL instead:
+     ```bash
+     export DB_DRIVER=postgres
+     export POSTGRES_HOST=localhost
+     export POSTGRES_PORT=5432
+     export POSTGRES_USER=postgres
+     export POSTGRES_PASSWORD=your_password
+     export POSTGRES_DB=reesource_tracker
+     export POSTGRES_SSLMODE=disable  # or 'require' for SSL
+     ```
+   - Migrations are database-agnostic and will run automatically on startup.
 3. **SQLC code generation:**
    - Install SQLC directly via Go:
      ```powershell
@@ -74,7 +84,7 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
     - `lib/` - Shared frontend utilities and components
       - `components/` - Reusable Svelte components (UI, forms, etc.)
   - `public/` - Static assets served by the frontend
-- `database/` - SQLite database and SQL files (schema, queries)
+- `database/` - Database migrations and SQL files (SQLite/PostgreSQL compatible)
 - `build/` - Compiled binaries and static build outputs
 
 ## Useful Commands

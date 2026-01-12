@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS tags (
 CREATE TABLE IF NOT EXISTS applied_tags (
     id BYTEA PRIMARY KEY NOT NULL,
     sample_id BYTEA NOT NULL REFERENCES samples (id),
-    tag_id BYTEA NOT NULL REFERENCES sample_tags (id),
+    tag_id BYTEA NOT NULL REFERENCES tags (id),
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_removed TIMESTAMP DEFAULT NULL
 );
