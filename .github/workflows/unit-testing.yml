@@ -1,6 +1,5 @@
 name: Go Unit Tests
-permissions:
-  contents: read
+permissions: {}
 
 on:
   push:
