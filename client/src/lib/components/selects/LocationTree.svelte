@@ -2,10 +2,18 @@
   import * as Select from "../ui/select";
   import type { SampleLocation } from "$lib/components/location";
   import LocationTree from "./LocationTree.svelte";
-  export let locations: SampleLocation[] = [];
-  export let filterOutIds: string[] = [];
-  export let level: number = 0;
-  export let filterMode: boolean = false;
+
+  let {
+    locations = [],
+    filterOutIds = [],
+    level = 0,
+    filterMode = false,
+  }: {
+    locations: SampleLocation[];
+    filterOutIds?: string[];
+    level?: number;
+    filterMode?: boolean;
+  } = $props();
 </script>
 
 {#each locations as location (location.id)}

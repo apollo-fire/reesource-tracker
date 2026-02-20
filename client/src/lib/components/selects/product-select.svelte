@@ -3,17 +3,29 @@
   import * as Select from "../ui/select";
   import { AppStore } from "$lib/components/app_store";
   import type { SampleProduct } from "$lib/components/product";
-  export let bindValue: string;
-  export let disabled: boolean = false;
-  export let placeholder: string = "Select a product";
-  export let id: string = "product-select";
-  export let required: boolean = false;
-  export let options: { value: string; label: string }[] = [];
-  export let onValueChange: (value: string) => void = () => {};
-  export let filterMode: boolean = false;
-  export let filterOutIds: string[] = [];
+  let {
+    bindValue = $bindable(""),
+    disabled = false,
+    placeholder = "Select a product",
+    id = "product-select",
+    required = false,
+    options = [],
+    onValueChange = () => {},
+    filterMode = false,
+    filterOutIds = [],
+  }: {
+    bindValue?: string;
+    disabled?: boolean;
+    placeholder?: string;
+    id?: string;
+    required?: boolean;
+    options?: { value: string; label: string }[];
+    onValueChange?: (value: string) => void;
+    filterMode?: boolean;
+    filterOutIds?: string[];
+  } = $props();
 
-  let top_level_products: SampleProduct[] = [];
+  let top_level_products: SampleProduct[] = $state([]);
 
   AppStore.subscribe((new_val) => {
     top_level_products =

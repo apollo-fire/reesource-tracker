@@ -12,6 +12,7 @@
   let scannedIds: string[] = $state([]);
   let selectedProduct = $state("");
   let selectedLocation = $state("");
+  import { AppStore } from "$lib/components/app_store";
   let sampleState = $state("");
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Checkbox } from "$lib/components/ui/checkbox/index.js";
@@ -122,15 +123,14 @@
         !updateOwner ||
         !updateProductIssue
       ) {
-        const res = await fetch(`/api/sample/${id}`);
-        if (res.ok) {
+        const existing_sample = $AppStore.samples.find((s) => s.id === id);
+        if (existing_sample) {
           sampleFetched = true;
-          const data = await res.json();
-          if (!updateProduct) productId = data.sample.ProductID || "";
-          if (!updateLocation) locationId = data.sample.LocationID || "";
-          if (!updateState) state = data.sample.State || "";
-          if (!updateOwner) ownerId = data.sample.OwnerID || "";
-          if (!updateProductIssue) issue = data.sample.ProductIssue || "";
+          if (!updateProduct) productId = existing_sample.Product?.id || "";
+          if (!updateLocation) locationId = existing_sample.Location?.id || "";
+          if (!updateState) state = existing_sample.state || "";
+          if (!updateOwner) ownerId = existing_sample.Owner?.id || "";
+          if (!updateProductIssue) issue = existing_sample.productIssue || "";
         }
       }
       // If sample not found and state is not configured, fallback to 'available'
@@ -170,10 +170,18 @@
       }
     }
     let msg = [];
-    if ((updateProduct || updateLocation || updateState) && errors === 0) {
-      msg.push("Changes applied to all scanned samples.");
-    } else if ((updateProduct || updateLocation || updateState) && errors > 0) {
-      msg.push(`Some updates failed (${errors} errors).`);
+    if (
+      updateProduct ||
+      updateLocation ||
+      updateState ||
+      updateOwner ||
+      updateProductIssue
+    ) {
+      if (errors === 0) {
+        msg.push("Changes applied to all scanned samples.");
+      } else {
+        msg.push(`Some updates failed (${errors} errors).`);
+      }
     }
     if (modNames.length > 0) {
       if (modErrors === 0) {

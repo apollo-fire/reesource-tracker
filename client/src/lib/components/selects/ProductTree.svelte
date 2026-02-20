@@ -2,10 +2,18 @@
   import * as Select from "$lib/components/ui/select";
   import type { SampleProduct } from "$lib/components/product";
   import ProductTree from "./ProductTree.svelte";
-  export let products: SampleProduct[] = [];
-  export let filterOutIds: string[] = [];
-  export let level: number = 0;
-  export let filterMode: boolean = false;
+
+  let {
+    products,
+    filterOutIds = [],
+    level = 0,
+    filterMode = false,
+  }: {
+    products: SampleProduct[];
+    filterOutIds?: string[];
+    level?: number;
+    filterMode?: boolean;
+  } = $props();
 </script>
 
 {#each products as product (product.id)}
