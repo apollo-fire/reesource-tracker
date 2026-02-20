@@ -112,12 +112,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract Docker metadata
+        id: tag_metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/reesource-tracker
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=main-,enable=${{ github.ref == 'refs/heads/main' }}
+            type=ref,event=pr,prefix=preview-
+            type=ref,event=branch,prefix=preview-,enable=${{ github.ref != 'refs/heads/main' }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ format('ghcr.io/{0}/reesource-tracker:latest', github.repository) }}
+          tags: ${{ steps.tag_metadata.outputs.tags }}
+          labels: ${{ steps.tag_metadata.outputs.labels }}

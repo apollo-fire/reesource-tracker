@@ -1,0 +1,34 @@
+name: Cleanup Preview Images
+
+on:
+  pull_request:
+    types: [closed]
+  delete:
+
+jobs:
+  delete-preview-image:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Determine Tag to Delete
+        id: get_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "tag=preview-pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "delete" && "${{ github.event.ref_type }}" == "branch" ]]; then
+            # Sanitize branch name as per docker tag rules (slashes to hyphens)
+            REF_NAME="${{ github.event.ref }}"
+            SAFE_REF_NAME=$(echo "$REF_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
+            echo "tag=preview-${SAFE_REF_NAME}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete Preview Images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "reesource-tracker"
+          package-type: "container"
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: "true"
+          # This regex matches the preview tags we want to delete (e.g. preview-pr-123, preview-feature-branch)
+          package-version-ids: ${{ steps.get_tag.outputs.tag }}
