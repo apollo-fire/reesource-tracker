@@ -13,15 +13,13 @@ type Event struct {
 	Data interface{} `json:"data"`
 }
 
-var (
-	syncClients   = make(map[string]map[string]chan Event)
-	syncClientsMu sync.Mutex
-)
+var SyncClients = make(map[string]map[string]chan Event)
+var SyncClientsMu sync.Mutex
 
 func BroadcastEvent(evtType string, data interface{}) {
-	syncClientsMu.Lock()
-	defer syncClientsMu.Unlock()
-	for _, clientMap := range syncClients {
+	SyncClientsMu.Lock()
+	defer SyncClientsMu.Unlock()
+	for _, clientMap := range SyncClients {
 		for _, ch := range clientMap {
 			select {
 			case ch <- Event{Type: evtType, Data: data}:
@@ -44,20 +42,20 @@ func EventStream(c *gin.Context) {
 	clientID := c.ClientIP() + uuid.New().String()
 	eventChan := make(chan Event, 10)
 
-	syncClientsMu.Lock()
-	if _, ok := syncClients[model_id]; !ok {
-		syncClients[model_id] = make(map[string]chan Event)
+	SyncClientsMu.Lock()
+	if _, ok := SyncClients[model_id]; !ok {
+		SyncClients[model_id] = make(map[string]chan Event)
 	}
-	syncClients[model_id][clientID] = eventChan
-	syncClientsMu.Unlock()
+	SyncClients[model_id][clientID] = eventChan
+	SyncClientsMu.Unlock()
 
 	defer func() {
-		syncClientsMu.Lock()
-		delete(syncClients[model_id], clientID)
-		if len(syncClients[model_id]) == 0 {
-			delete(syncClients, model_id)
+		SyncClientsMu.Lock()
+		delete(SyncClients[model_id], clientID)
+		if len(SyncClients[model_id]) == 0 {
+			delete(SyncClients, model_id)
 		}
-		syncClientsMu.Unlock()
+		SyncClientsMu.Unlock()
 		close(eventChan)
 	}()
 

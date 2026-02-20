@@ -1,8 +1,9 @@
-package mods
+package sample_mods
 
 import (
 	"database/sql"
 	"net/http"
+	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	"reesource-tracker/lib/id_helper"
 	sampleid "reesource-tracker/lib/sample_id"
@@ -13,9 +14,9 @@ import (
 )
 
 func Routes(route *gin.RouterGroup) {
-	route.POST("/sample/:sample_id/mods", addMod)
-	route.POST("/sample/:sample_id/mods/:mod_id/remove", removeMod)
-	route.GET("/sample/:sample_id/mods", listMods)
+	route.POST("/", addMod)
+	route.DELETE("/:mod_id", removeMod)
+	route.GET("/", listMods)
 }
 
 func addMod(c *gin.Context) {
@@ -36,6 +37,7 @@ func addMod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
 		return
 	}
+	RawSampleID := parts[:]
 	modID, err := uuid.New().MarshalBinary()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate mod ID"})
@@ -44,7 +46,7 @@ func addMod(c *gin.Context) {
 	timeNow := time.Now()
 	err = database.Connection.AddSampleMod(c, database.AddSampleModParams{
 		ID:        modID,
-		SampleID:  parts[:],
+		SampleID:  RawSampleID,
 		Name:      req.Name,
 		TimeAdded: timeNow,
 	})
@@ -52,6 +54,7 @@ func addMod(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	sync.BroadcastEvent("samples_updated", gin.H{})
 	c.JSON(http.StatusOK, gin.H{"message": "Mod added"})
 }
 
@@ -74,6 +77,7 @@ func removeMod(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	sync.BroadcastEvent("samples_updated", gin.H{})
 	c.JSON(http.StatusOK, gin.H{"message": "Mod removed"})
 }
 
@@ -88,7 +92,9 @@ func listMods(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
 		return
 	}
-	mods, err := database.Connection.ListSampleMods(c, parts[:])
+	RawSampleID := parts[:]
+
+	mods, err := database.Connection.ListSampleMods(c, RawSampleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

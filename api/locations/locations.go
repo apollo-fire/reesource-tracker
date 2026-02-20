@@ -19,7 +19,6 @@ func Routes(route *gin.RouterGroup) {
 	route.DELETE("/location/:location_id", deleteLocation)
 }
 
-// DELETE /location/:location_id
 func deleteLocation(c *gin.Context) {
 	locationID := c.Param("location_id")
 	if locationID == "" {
