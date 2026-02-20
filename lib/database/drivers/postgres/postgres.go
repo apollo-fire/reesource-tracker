@@ -80,14 +80,14 @@ return "", fmt.Errorf("failed to create database directory: %w", err)
 }
 
 // Configure embedded PostgreSQL
+// Don't specify RuntimePath - let it use temp directory
 embeddedDB = embeddedpostgres.NewDatabase(
 embeddedpostgres.DefaultConfig().
 Username("postgres").
 Password("postgres").
 Database("reesource_tracker").
 Port(5433). // Use different port to avoid conflicts
-DataPath(dbDir).
-RuntimePath(filepath.Join(dbDir, "runtime")))
+DataPath(dbDir))
 
 // Start embedded PostgreSQL
 if err := embeddedDB.Start(); err != nil {
