@@ -4,3 +4,4 @@
 .env
 **/*.sqlite-**
 **/postgres_data/*
+**/.pgpassword

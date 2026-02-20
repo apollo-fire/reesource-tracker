@@ -54,7 +54,7 @@ func createProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate product ID"})
 		return
 	}
-	
+
 	// Convert parent product ID if provided
 	var parentProductIDBytes []byte
 	if req.ParentProductID != nil {
@@ -65,7 +65,7 @@ func createProduct(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// UpsertProduct expects UpsertProductParams struct
 	params := database.UpsertProductParams{
 		ID:              new_uid,

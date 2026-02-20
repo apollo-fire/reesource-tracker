@@ -14,7 +14,7 @@ func Connect(ctx context.Context) {
 	if _, err := os.Stat("migrations"); err == nil {
 		migration_dir = "file://migrations"
 	}
-	
+
 	db, m, err := postgres_driver.Connect(ctx, migration_dir)
 	if err != nil {
 		log.Printf("Database connection error: %v", err)

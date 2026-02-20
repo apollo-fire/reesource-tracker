@@ -1,11 +1,11 @@
 package mods
 
 import (
+	"database/sql"
+	"net/http"
 	"reesource-tracker/lib/database"
 	"reesource-tracker/lib/id_helper"
 	sampleid "reesource-tracker/lib/sample_id"
-	"database/sql"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +44,7 @@ func addMod(c *gin.Context) {
 	timeNow := time.Now()
 	err = database.Connection.AddSampleMod(c, database.AddSampleModParams{
 		ID:        modID,
-		SampleID:  parts,
+		SampleID:  parts[:],
 		Name:      req.Name,
 		TimeAdded: timeNow,
 	})
@@ -88,7 +88,7 @@ func listMods(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
 		return
 	}
-	mods, err := database.Connection.ListSampleMods(c, parts)
+	mods, err := database.Connection.ListSampleMods(c, parts[:])
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

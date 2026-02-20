@@ -1,11 +1,11 @@
 package locations
 
 import (
+	"database/sql"
+	"net/http"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	id_helper "reesource-tracker/lib/id_helper"
-	"database/sql"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
