@@ -82,12 +82,12 @@ return "", fmt.Errorf("failed to create database directory: %w", err)
 // Configure embedded PostgreSQL
 // Don't specify RuntimePath - let it use temp directory
 embeddedDB = embeddedpostgres.NewDatabase(
-embeddedpostgres.DefaultConfig().
-Username("postgres").
-Password("postgres").
-Database("reesource_tracker").
-Port(5433). // Use different port to avoid conflicts
-DataPath(dbDir))
+		embeddedpostgres.DefaultConfig().
+			Username("postgres").
+			Password("postgres").
+			Database("reesource_tracker").
+			Port(5433). // Use different port to avoid conflicts with system PostgreSQL instances
+			DataPath(dbDir))
 
 // Start embedded PostgreSQL
 if err := embeddedDB.Start(); err != nil {
@@ -112,11 +112,12 @@ if user == "" {
 user = "postgres"
 }
 
-password := os.Getenv("POSTGRES_PASSWORD")
-if password == "" {
-log.Println("WARNING: POSTGRES_PASSWORD not set, using empty password")
-password = ""
-}
+	password := os.Getenv("POSTGRES_PASSWORD")
+	if password == "" {
+		// For security, require password to be explicitly set
+		log.Println("ERROR: POSTGRES_PASSWORD environment variable must be set for external PostgreSQL")
+		return ""
+	}
 
 dbname := os.Getenv("POSTGRES_DB")
 if dbname == "" {
