@@ -71,7 +71,12 @@ func getUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
 		return
 	}
-	user, err := database.Connection.GetUserByID(c, userID)
+	userIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(userID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	user, err := database.Connection.GetUserByID(c, userIDBytes)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return

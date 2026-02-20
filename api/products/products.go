@@ -54,11 +54,23 @@ func createProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate product ID"})
 		return
 	}
+	
+	// Convert parent product ID if provided
+	var parentProductIDBytes []byte
+	if req.ParentProductID != nil {
+		var ok bool
+		parentProductIDBytes, _, ok = id_helper.MustParseAndMarshalUUID(*req.ParentProductID)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parent product ID format"})
+			return
+		}
+	}
+	
 	// UpsertProduct expects UpsertProductParams struct
 	params := database.UpsertProductParams{
 		ID:              new_uid,
 		Name:            req.Name,
-		ParentProductID: req.ParentProductID,
+		ParentProductID: parentProductIDBytes,
 	}
 	err = database.Connection.UpsertProduct(c, params)
 	if err != nil {
@@ -75,7 +87,12 @@ func getProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id required"})
 		return
 	}
-	product, err := database.Connection.GetProductByID(c, productID)
+	productIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(productID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	product, err := database.Connection.GetProductByID(c, productIDBytes)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
