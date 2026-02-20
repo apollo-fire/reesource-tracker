@@ -19,9 +19,8 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
    - **Embedded PostgreSQL (default):** By default, the application uses embedded PostgreSQL which stores data in `database/postgres_data/`. A random secure password is generated at runtime. No additional setup required.
    - **External PostgreSQL:** To use an external PostgreSQL server, set the `DATABASE_URL` environment variable:
      ```bash
-     export DATABASE_URL="postgresql://username:password@hostname:port/database?sslmode=disable"
-     # Example:
-     export DATABASE_URL="postgresql://postgres:mypassword@localhost:5432/reesource_tracker?sslmode=disable"
+     # Format: postgresql://USER:PASS@HOST:PORT/DATABASE?sslmode=disable
+     export DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/reesource_tracker?sslmode=disable"
      ```
    - Migrations run automatically on startup.
 3. **SQLC code generation:**
