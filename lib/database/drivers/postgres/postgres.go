@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 	"github.com/golang-migrate/migrate/v4"
@@ -116,8 +117,11 @@ func getOrCreatePassword() (string, error) {
 
 	// Check if password file exists
 	if data, err := os.ReadFile(passwordPath); err == nil {
-		// Password file exists, use it
-		password := string(data)
+		// Password file exists, validate and use it
+		password := strings.TrimSpace(string(data))
+		if len(password) == 0 {
+			return "", fmt.Errorf("password file is empty")
+		}
 		log.Println("Using existing embedded PostgreSQL password")
 		return password, nil
 	}
@@ -128,9 +132,15 @@ func getOrCreatePassword() (string, error) {
 		return "", fmt.Errorf("failed to generate password: %w", err)
 	}
 
-	// Save password to file with restricted permissions
-	if err := os.WriteFile(passwordPath, []byte(password), 0600); err != nil {
-		return "", fmt.Errorf("failed to save password: %w", err)
+	// Create file with restrictive permissions atomically
+	f, err := os.OpenFile(passwordPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return "", fmt.Errorf("failed to create password file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(password); err != nil {
+		return "", fmt.Errorf("failed to write password: %w", err)
 	}
 
 	log.Println("Generated new secure password for embedded PostgreSQL")
@@ -139,12 +149,19 @@ func getOrCreatePassword() (string, error) {
 
 // generateRandomPassword creates a cryptographically secure random password
 func generateRandomPassword(length int) (string, error) {
-	bytes := make([]byte, length)
+	// Calculate bytes needed for desired base64 length
+	// base64 encoding: 3 bytes -> 4 characters, so we need (length * 3 / 4) bytes
+	byteCount := (length*3 + 3) / 4
+	bytes := make([]byte, byteCount)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-	// Use base64 encoding for a readable password
-	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+	// Encode to base64 and take first 'length' characters
+	encoded := base64.URLEncoding.EncodeToString(bytes)
+	if len(encoded) > length {
+		return encoded[:length], nil
+	}
+	return encoded, nil
 }
 
 // Stop stops the embedded PostgreSQL instance if running
