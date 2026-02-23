@@ -1,12 +1,12 @@
-package mods
+package sample_mods
 
 import (
+	"database/sql"
+	"net/http"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	"reesource-tracker/lib/id_helper"
 	sampleid "reesource-tracker/lib/sample_id"
-	"database/sql"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
