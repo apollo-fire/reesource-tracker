@@ -82,7 +82,12 @@ func getLocation(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "id required"})
 		return
 	}
-	location, err := database.Connection.GetLocation(c, locationID)
+	locationIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(locationID)
+	if !ok {
+		c.JSON(400, gin.H{"error": errMsg})
+		return
+	}
+	location, err := database.Connection.GetLocation(c, locationIDBytes)
 	if err != nil {
 		c.JSON(404, gin.H{"error": err.Error()})
 		return

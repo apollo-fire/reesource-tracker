@@ -1,31 +1,36 @@
 package database
 
 import (
-	"context"
-	"os"
-	sqlite_driver "reesource-tracker/lib/database/drivers/sqlite"
+"context"
+"log"
+"os"
+postgres_driver "reesource-tracker/lib/database/drivers/postgres"
 )
 
 var Connection *Queries
 
-const DATABASE_LOCATION = "database/db.sqlite"
-
 func Connect(ctx context.Context) error {
-	migration_dir := "file://database/migrations"
-	if _, err := os.Stat("migrations"); err == nil {
-		migration_dir = "file://migrations"
-	}
-	db, m, err := sqlite_driver.Connect(ctx, migration_dir, DATABASE_LOCATION)
-	if err != nil {
-		println("Got error", err.Error())
-		return err
-	}
-	Connection = New(db)
+migration_dir := "file://database/migrations"
+if _, err := os.Stat("migrations"); err == nil {
+migration_dir = "file://migrations"
+}
 
-	err = m.Up()
-	if err != nil && err.Error() != "no change" {
-		println("Error applying migration", err.Error())
-		return err
-	}
-	return nil
+db, m, err := postgres_driver.Connect(ctx, migration_dir)
+if err != nil {
+log.Printf("Database connection error: %v", err)
+return err
+}
+Connection = New(db)
+
+err = m.Up()
+if err != nil && err.Error() != "no change" {
+log.Printf("Error applying migration: %v", err)
+return err
+}
+return nil
+}
+
+// Cleanup stops the embedded database if running
+func Cleanup() error {
+return postgres_driver.Stop()
 }
