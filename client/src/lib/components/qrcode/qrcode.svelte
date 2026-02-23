@@ -1,28 +1,28 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import QRCode from "qrcode";
-  let { value = "", size = 128 } = $props();
-  let dataUrl = $state("");
+    import QRCode from 'qrcode';
+    import { onMount } from 'svelte';
 
-  onMount(async () => {
-    updateQRCode();
-  });
+    let { value = '', size = 128 } = $props();
+    let dataUrl = $state('');
 
-  async function updateQRCode() {
-    if (value) {
-      // @ts-ignore
-      QRCode.toDataURL(value, {
-        margin: 0,
-        errorCorrectionLevel: "L",
-      }).then((url: string) => (dataUrl = url));
+    onMount(async () => {
+        updateQRCode();
+    });
+
+    async function updateQRCode() {
+        if (value) {
+            QRCode.toDataURL(value, {
+                margin: 0,
+                errorCorrectionLevel: 'L',
+            }).then((url: string) => (dataUrl = url));
+        }
     }
-  }
 
-  $effect(() => {
-    updateQRCode();
-  });
+    $effect(() => {
+        updateQRCode();
+    });
 </script>
 
 {#if dataUrl}
-  <img alt="QR code" src={dataUrl} width={size} height={size} />
+    <img alt="QR code" src={dataUrl} width={size} height={size} />
 {/if}

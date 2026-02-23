@@ -1,4 +1,19 @@
 # License Checker Workflow
+# Compatibility checks available at:
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/GPL-3.0-only/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/LGPL-3.0-only/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/MIT/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/0BSD/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/BSD-3-Clause-Clear/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/BSD-3-Clause/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/BSD-2-Clause/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/Apache-2.0/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/ISC/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/MPL-2.0/GPL-3.0-only
+# * https://interoperable-europe.ec.europa.eu/licence/compatibility-check/CC0-1.0/GPL-3.0-only
+# Source for remaining licenses:
+# * Python: https://spdx.org/licenses/Python-2.0.html
+# * BlueOak: https://spdx.org/licenses/BlueOak-1.0.0.html
 
 name: License Checker
 
@@ -52,7 +67,7 @@ jobs:
       - name: Install npm dependencies
         run: bun install
       - name: Generate npm license report (CSV)
-        run: license-checker --csv --out npm-licenses.csv
+        run: license-checker --csv --excludePrivatePackages --out npm-licenses.csv
         continue-on-error: true
       - name: Upload npm license report
         uses: actions/upload-artifact@v4.6.2
@@ -89,8 +104,8 @@ jobs:
             - ISC
             - MPL-2.0
             - CC0-1.0
-            - UNLICENSED
             - BlueOak-1.0.0
+            - Python-2.0
         run: |
           chmod +x ./check_license_compatibility.sh
           COMPATIBLE_LICENSES=$(echo "$COMPATIBLE_LICENSES_YAML" | yq e '.[]' - | paste -sd'|' -)
