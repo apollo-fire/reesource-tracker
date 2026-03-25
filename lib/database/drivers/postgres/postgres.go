@@ -23,11 +23,9 @@ func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migra
 	var connStr string
 
 	if databaseURL != "" {
-		// Use provided DATABASE_URL for external connection
 		connStr = databaseURL
 		log.Println("Connecting to external PostgreSQL database...")
 	} else {
-		// Use embedded PostgreSQL with local file storage
 		log.Fatal("ERROR: No database provided")
 	}
 
