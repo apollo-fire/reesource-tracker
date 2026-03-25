@@ -14,7 +14,6 @@ import (
 )
 
 const DRIVER_NAME = "postgres"
-const PASSWORD_FILE = ".pgpassword"
 
 func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migrate, error) {
 	// Check if DATABASE_URL is provided
