@@ -137,10 +137,13 @@ func getOrCreatePassword() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create password file: %w", err)
 	}
-	defer f.Close()
 
 	if _, err := f.WriteString(password); err != nil {
 		return "", fmt.Errorf("failed to write password: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("failed to close password file: %w", err)
 	}
 
 	log.Println("Generated new secure password for embedded PostgreSQL")
