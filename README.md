@@ -8,37 +8,55 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
 
 - [Go](https://golang.org/doc/install) (v1.18+ recommended)
 - [Bun](https://bun.sh/) (v1+ recommended)
+- [Docker](https://docs.docker.com/engine/install/ubuntu/) (for unit testing, installed in your WSL distribution)
 
 ### Backend Setup (Go)
 
 1. **Install Go dependencies:**
+
    ```powershell
+
    go mod tidy
    ```
+
 2. **Database setup:**
-   - **Embedded PostgreSQL (default):** By default, the application uses embedded PostgreSQL which stores data in `database/postgres_data/`. A random secure password is generated at runtime. No additional setup required.
-   - **External PostgreSQL:** To use an external PostgreSQL server, set the `DATABASE_URL` environment variable:
+   - Set the `DATABASE_URL` environment variable:
+
      ```bash
+
      # Format: postgresql://USER:PASS@HOST:PORT/DATABASE?sslmode=disable
      export DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/reesource_tracker?sslmode=disable"
      ```
+
    - Migrations run automatically on startup.
+
 3. **SQLC code generation:**
    - Install SQLC directly via Go:
+
      ```powershell
+
      go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
      ```
+
    - After installation, restart your terminal to ensure the Go bin directory is in your PATH.
    - Generate Go code from SQL queries:
+
      ```powershell
+
      sqlc generate
      ```
+
    - This will generate type-safe Go code for database access in `lib/database/query.sql.go`.
+
 4. **Run the backend:**
+
    ```powershell
+
    go run main.go
    ```
+
    Or build and run:
+
    ```powershell
    go build -o build/reesource-tracker.exe main.go
    ./build/reesource-tracker.exe
@@ -49,25 +67,71 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
 1. **Install Bun:**
    - [Install Bun](https://bun.sh/docs/installation)
 2. **Install frontend dependencies:**
+
    ```powershell
+
    cd client
    bun install
    ```
+
 3. **Run the frontend dev server:**
+
    ```powershell
    bun run --bun dev
    ```
-   - The app will be available at [http://localhost](http://localhost)
 
-### Usage of SQLC
+   - With both the frontend and backend running, the app will be available at [http://localhost](http://localhost)
+
+### Unit Testing
+
+The project uses Testcontainers for integration testing with PostgreSQL.
+
+#### Setup
+
+1. **Configure Docker daemon to expose TCP socket:**
+
+   In your WSL distribution, edit or create `/etc/docker/daemon.json`:
+
+   ```json
+   {
+     "hosts": ["unix:///var/run/docker.sock", "tcp://127.0.0.1:2375"]
+   }
+   ```
+
+   Restart the Docker service:
+
+   ```bash
+   sudo systemctl restart docker
+   ```
+
+2. **Set DOCKER_HOST environment variable:**
+
+   In your PowerShell terminal (or add to your profile):
+
+   ```powershell
+   $env:DOCKER_HOST = "tcp://127.0.0.1:2375"
+   ```
+
+3. **Configure Testcontainers properties:**
+
+   Ensure the following `.testcontainers.properties` file exists in your home directory (`C:\Users\<YourUsername>\.testcontainers.properties`):
+
+   ```properties
+   docker.client.strategy=org.testcontainers.dockerclient.NpipeSocketClientProviderStrategy
+   docker.host=tcp://localhost:2375
+   ```
+
+4. **Run tests:**
+
+   ```powershell
+   go test ./... -v
+   ```
+
+## Usage of SQLC
 
 - SQLC reads SQL queries from `database/query.sql` and generates Go code for type-safe database access.
 - Configuration is in `sqlc.yaml`.
 - After editing SQL files, always run `sqlc generate` to update Go code.
-
-### Docker (Optional)
-
-- Docker is not required for development. Deployment is handled by GitHub Actions.
 
 ## Project Structure
 
@@ -81,9 +145,3 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
   - `public/` - Static assets served by the frontend
 - `database/` - Database migrations (PostgreSQL) and data storage
 - `build/` - Compiled binaries and static build outputs
-
-## Useful Commands
-
-- **Go:** `go mod tidy`, `go run .`, `go build`
-- **Bun:** `bun install`, `bun run --bun dev`, `bun run --bun build`
-- **SQLC:** `sqlc generate`

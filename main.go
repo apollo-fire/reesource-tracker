@@ -103,9 +103,7 @@ func main() {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 
-	database.Instance.Close()
-	database.Cleanup()
-
+	database.Disconnect()
 }
 
 func proxy(c *gin.Context) {

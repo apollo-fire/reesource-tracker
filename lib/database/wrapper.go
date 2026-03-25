@@ -33,7 +33,9 @@ func Connect(ctx context.Context) error {
 	return nil
 }
 
-// Cleanup stops the embedded database if running
-func Cleanup() error {
-	return postgres_driver.Stop()
+func Disconnect() error {
+	if Instance != nil {
+		return Instance.Close()
+	}
+	return nil
 }
