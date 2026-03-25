@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE samples
-ADD COLUMN owner_id BYTEA REFERENCES users (id);
+ADD COLUMN owner_id BYTEA REFERENCES users (id) DEFAULT NULL;
 
 ALTER TABLE samples
 ADD COLUMN product_issue VARCHAR(4);

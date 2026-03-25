@@ -2,12 +2,14 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
 	postgres_driver "reesource-tracker/lib/database/drivers/postgres"
 )
 
 var Connection *Queries
+var Instance *sql.DB
 
 func Connect(ctx context.Context) error {
 	migration_dir := "file://database/migrations"
@@ -21,6 +23,7 @@ func Connect(ctx context.Context) error {
 		return err
 	}
 	Connection = New(db)
+	Instance = db
 
 	err = m.Up()
 	if err != nil && err.Error() != "no change" {

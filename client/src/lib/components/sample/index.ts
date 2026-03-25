@@ -44,7 +44,7 @@ export class Sample {
   private ownerId: string | null = null;
   constructor(
     sample_data: { [key: string]: any },
-    app_store?: SvelteStore<AppData>
+    app_store?: SvelteStore<AppData>,
   ) {
     this.id = sample_data.ID || "";
     this.state = Object.values(SampleState).includes(sample_data.State)
@@ -82,7 +82,7 @@ export class Sample {
       return null;
     }
     const location = get(this.app_store).locations.find(
-      (l) => l.id === this.locationId
+      (l) => l.id === this.locationId,
     );
     return location ?? null;
   }
@@ -92,7 +92,7 @@ export class Sample {
       return null;
     }
     const product = get(this.app_store).products.find(
-      (p) => p.id === this.productId
+      (p) => p.id === this.productId,
     );
     return product ?? null;
   }

@@ -7,11 +7,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reesource-tracker/api"
 	"reesource-tracker/lib/database"
 	"runtime"
 	"strings"
+	"time"
 
 	_ "embed"
 
@@ -62,7 +64,10 @@ func main() {
 		})
 
 	}
-	err := database.Connect(context.Background())
+	// Create context with cancel for graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	err := database.Connect(ctx)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err.Error())
 	}
@@ -71,12 +76,36 @@ func main() {
 		c.Redirect(http.StatusPermanentRedirect, "/app")
 	})
 
-	if runtime.GOOS == "windows" && devmode {
-		r.Run("localhost:80")
-	} else {
-		r.Run("0.0.0.0:80")
-		println("Server started on port 80")
+	// Create HTTP server
+	srv := &http.Server{
+		Addr:    ":80",
+		Handler: r,
 	}
+
+	// Start server in a goroutine
+	go func() {
+		if runtime.GOOS == "windows" && devmode {
+			srv.Addr = "localhost:80"
+		}
+		println("Server started on", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server
+	<-ctx.Done()
+
+	// Give outstanding requests 5 seconds to complete
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	database.Instance.Close()
+	database.Cleanup()
+
 }
 
 func proxy(c *gin.Context) {

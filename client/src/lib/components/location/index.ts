@@ -11,13 +11,13 @@ export class SampleLocation {
 
   constructor(
     location_data: { [key: string]: any },
-    app_store: SvelteStore<AppData> | null = null
+    app_store: SvelteStore<AppData> | null = null,
   ) {
     this.id = Base64UUIDToString(location_data.ID || "");
     this.name = location_data.Name || "";
     this.description = location_data.Description.String || "";
     this.parentLocationID = Base64UUIDToString(
-      location_data.ParentLocationID || ""
+      location_data.ParentLocationID || "",
     );
     this.app_store = app_store;
   }
@@ -30,7 +30,7 @@ export class SampleLocation {
       return null;
     }
     const location = get(this.app_store).locations.find(
-      (l) => l.id === this.parentLocationID
+      (l) => l.id === this.parentLocationID,
     );
     return location ?? null;
   }
@@ -40,7 +40,7 @@ export class SampleLocation {
       return [];
     }
     return get(this.app_store).locations.filter(
-      (l) => l.parentLocationID === this.id
+      (l) => l.parentLocationID === this.id,
     );
   }
 

@@ -372,7 +372,7 @@
                     () => firstRow, (el) => (i === 0 ? (firstRow = el) : null)
                   }
                 >
-                  <Table.Cell>{sample.DisplayId}</Table.Cell>
+                  <Table.Cell class="font-mono">{sample.DisplayId}</Table.Cell>
                   <Table.Cell
                     >{sample.Product?.CombinedName}
                     {#if sample.Product?.partNumber}{`(${sample.Product?.partNumber})`}{/if}</Table.Cell

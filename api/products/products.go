@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProductResponse struct {
+	ID              []byte  `json:"ID"`
+	Name            string  `json:"Name"`
+	ParentProductID *[]byte `json:"ParentProductID,omitempty"`
+	PartNumber      string  `json:"PartNumber"`
+}
+
 func Routes(route *gin.RouterGroup) {
 	route.GET("/products", getProducts)
 	route.POST("/product", createProduct)
@@ -45,7 +52,7 @@ func createProduct(c *gin.Context) {
 		Name            string  `json:"name"`
 		ParentProductID *string `json:"parent_product_id"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -70,7 +77,7 @@ func createProduct(c *gin.Context) {
 	params := database.UpsertProductParams{
 		ID:              new_uid,
 		Name:            req.Name,
-		ParentProductID: parentProductIDBytes,
+		ParentProductID: sql.Null[[]byte]{V: parentProductIDBytes, Valid: parentProductIDBytes != nil},
 	}
 	err = database.Connection.UpsertProduct(c, params)
 	if err != nil {
@@ -97,7 +104,17 @@ func getProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, product)
+	response := ProductResponse{
+		ID:   product.ID,
+		Name: product.Name,
+	}
+	if product.ParentProductID.Valid {
+		response.ParentProductID = &product.ParentProductID.V
+	}
+	if product.PartNumber.Valid {
+		response.PartNumber = product.PartNumber.String
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func updateProduct(c *gin.Context) {
@@ -111,7 +128,7 @@ func updateProduct(c *gin.Context) {
 		ParentProductID string `json:"parent_product_id"`
 		PartNumber      string `json:"part_number"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -133,7 +150,7 @@ func updateProduct(c *gin.Context) {
 	params := database.UpsertProductParams{
 		ID:              binary_uuid,
 		Name:            req.Name,
-		ParentProductID: parentBinaryUUID,
+		ParentProductID: sql.Null[[]byte]{V: parentBinaryUUID, Valid: parentBinaryUUID != nil},
 		PartNumber:      sql.NullString{String: req.PartNumber, Valid: true},
 	}
 	err := database.Connection.UpsertProduct(c, params)
@@ -151,5 +168,19 @@ func getProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	var responses []ProductResponse
+	for _, product := range res {
+		response := ProductResponse{
+			ID:   product.ID,
+			Name: product.Name,
+		}
+		if product.ParentProductID.Valid {
+			response.ParentProductID = &product.ParentProductID.V
+		}
+		if product.PartNumber.Valid {
+			response.PartNumber = product.PartNumber.String
+		}
+		responses = append(responses, response)
+	}
+	c.JSON(http.StatusOK, responses)
 }

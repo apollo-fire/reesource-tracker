@@ -2,19 +2,19 @@ CREATE TABLE IF NOT EXISTS locations (
     id BYTEA PRIMARY KEY NOT NULL,
     name VARCHAR(128) NOT NULL,
     description TEXT,
-    parent_location_id BYTEA REFERENCES locations (id)
+    parent_location_id BYTEA REFERENCES locations (id) DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS products (
         id BYTEA PRIMARY KEY NOT NULL,
         name VARCHAR(128) NOT NULL,
-        parent_product_id BYTEA REFERENCES products (id)
+        parent_product_id BYTEA REFERENCES products (id) DEFAULT NULL
     );
 
 CREATE TABLE IF NOT EXISTS samples (
     id BYTEA PRIMARY KEY NOT NULL,
-    location_id BYTEA REFERENCES locations (id),
-    product_id BYTEA REFERENCES products (id),
+    location_id BYTEA REFERENCES locations (id) DEFAULT NULL,
+    product_id BYTEA REFERENCES products (id) DEFAULT NULL,
     time_registered TIMESTAMP,
     last_update TIMESTAMP,
     state TEXT CHECK (
