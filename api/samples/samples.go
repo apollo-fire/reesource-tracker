@@ -176,13 +176,41 @@ func updateSample(c *gin.Context) {
 	}
 	sync.BroadcastEvent("samples_updated", gin.H{})
 
+	var locationID *[]byte
+	if res.LocationID.Valid {
+		v := res.LocationID.V
+		locationID = &v
+	}
+
+	var productID *[]byte
+	if res.ProductID.Valid {
+		v := res.ProductID.V
+		productID = &v
+	}
+
+	var ownerID *[]byte
+	if res.OwnerID.Valid {
+		v := res.OwnerID.V
+		ownerID = &v
+	}
+
+	var timeRegistered string
+	if res.TimeRegistered.Valid {
+		timeRegistered = res.TimeRegistered.Time.Format(time.RFC3339)
+	}
+
+	var lastUpdate string
+	if res.LastUpdate.Valid {
+		lastUpdate = res.LastUpdate.Time.Format(time.RFC3339)
+	}
+
 	c.JSON(http.StatusOK, SampleResponse{
-		LocationID:     &res.LocationID.V,
-		ProductID:      &res.ProductID.V,
-		OwnerID:        &res.OwnerID.V,
+		LocationID:     locationID,
+		ProductID:      productID,
+		OwnerID:        ownerID,
 		ID:             res.ID,
-		TimeRegistered: res.TimeRegistered.Time.String(),
-		LastUpdate:     res.LastUpdate.Time.String(),
+		TimeRegistered: timeRegistered,
+		LastUpdate:     lastUpdate,
 		State:          res.State,
 		ProductIssue:   res.ProductIssue.String,
 	})
