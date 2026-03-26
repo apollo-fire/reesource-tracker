@@ -22,14 +22,14 @@ type SampleData struct {
 }
 
 type SampleResponse struct {
-	ID             []byte  `json:"ID"`
-	LocationID     *[]byte `json:"LocationID,omitempty"`
-	ProductID      *[]byte `json:"ProductID,omitempty"`
-	TimeRegistered string  `json:"TimeRegistered"`
-	LastUpdate     string  `json:"LastUpdate"`
-	State          string  `json:"State"`
-	OwnerID        *[]byte `json:"OwnerID,omitempty"`
-	ProductIssue   string  `json:"ProductIssue"`
+	ID             []byte         `json:"ID"`
+	LocationID     *[]byte        `json:"LocationID,omitempty"`
+	ProductID      *[]byte        `json:"ProductID,omitempty"`
+	TimeRegistered string         `json:"TimeRegistered"`
+	LastUpdate     string         `json:"LastUpdate"`
+	State          string         `json:"State"`
+	OwnerID        *[]byte        `json:"OwnerID,omitempty"`
+	ProductIssue   sql.NullString `json:"ProductIssue"`
 }
 
 const MAX_PROVISIONED_SAMPLES = 1000
@@ -98,9 +98,7 @@ func getSample(c *gin.Context) {
 	if res.OwnerID.Valid {
 		sampleResponse.OwnerID = &res.OwnerID.V
 	}
-	if res.ProductIssue.Valid {
-		sampleResponse.ProductIssue = res.ProductIssue.String
-	}
+	sampleResponse.ProductIssue = res.ProductIssue
 
 	c.JSON(http.StatusOK, gin.H{"sample": sampleResponse, "mods": mod_data})
 }
@@ -165,7 +163,7 @@ func updateSample(c *gin.Context) {
 		LocationID:     sql.Null[[]byte]{V: locationBinary, Valid: locationBinary != nil},
 		ProductID:      sql.Null[[]byte]{V: productBinary, Valid: productBinary != nil},
 		OwnerID:        sql.Null[[]byte]{V: ownerBinary, Valid: ownerBinary != nil},
-		ProductIssue:   sql.NullString{String: req.ProductIssue, Valid: true},
+		ProductIssue:   sql.NullString{String: req.ProductIssue, Valid: req.ProductIssue != ""},
 		TimeRegistered: sql.NullTime{Time: current_time, Valid: true},
 		LastUpdate:     sql.NullTime{Time: current_time, Valid: true},
 		State:          req.State,
@@ -212,7 +210,7 @@ func updateSample(c *gin.Context) {
 		TimeRegistered: timeRegistered,
 		LastUpdate:     lastUpdate,
 		State:          res.State,
-		ProductIssue:   res.ProductIssue.String,
+		ProductIssue:   res.ProductIssue,
 	})
 }
 
@@ -230,8 +228,9 @@ func getSamples(c *gin.Context) {
 			return
 		}
 		sampleResponse := SampleResponse{
-			ID:    sample.ID,
-			State: sample.State,
+			ID:           sample.ID,
+			State:        sample.State,
+			ProductIssue: sample.ProductIssue,
 		}
 		if sample.LocationID.Valid {
 			sampleResponse.LocationID = &sample.LocationID.V
@@ -249,9 +248,6 @@ func getSamples(c *gin.Context) {
 		}
 		if sample.OwnerID.Valid {
 			sampleResponse.OwnerID = &sample.OwnerID.V
-		}
-		if sample.ProductIssue.Valid {
-			sampleResponse.ProductIssue = sample.ProductIssue.String
 		}
 		var modResponses []sample_mods.SampleModResponse
 		for _, mod := range mod_data {
