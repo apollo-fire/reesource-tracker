@@ -2,9 +2,79 @@
 
 Reesource Tracker is a full-stack application for tracking samples, products, and locations. It uses Go for the backend, Bun (with Svelte) for the frontend, and SQLC for type-safe database access.
 
+## Deployment Guide
+
+The easiest way to deploy is by using the provided docker image. The CI workflow publishes the production image to GitHub Container Registry as `ghcr.io/apollo-fire/reesource-tracker/reesource-tracker:latest`.
+
+### Deployment Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/)
+
+### Docker Compose Deployment
+
+You can use this image by creating a `compose.yml` file on the deployment host. For example:
+
+```yaml
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reesource_tracker
+      POSTGRES_USER: reesource_tracker
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U reesource_tracker -d reesource_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ghcr.io/apollo-fire/reesource-tracker/reesource-tracker:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://reesource_tracker:change-me@postgres:5432/reesource_tracker?sslmode=disable
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+```
+
+Start the stack:
+
+```bash
+docker compose up -d
+```
+
+The application will be available on port `80`. Database migrations run automatically when the application container starts.
+
+### Updating
+
+Pull the latest published image and recreate the app container:
+
+```bash
+docker compose pull app
+docker compose up -d app
+```
+
+### Notes
+
+- Change the PostgreSQL password before deploying.
+- Do not set `DEV=true` in production.
+
 ## Development Guide
 
-### Prerequisites
+For development, build and run the backend and frontend locally from source.
+
+### Local Prerequisites
 
 - [Go](https://golang.org/doc/install) (v1.18+ recommended)
 - [Bun](https://bun.sh/) (v1+ recommended)
@@ -19,18 +89,25 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
    go mod tidy
    ```
 
-2. **Database setup:**
-   - Set the `DATABASE_URL` environment variable:
+2. **Environment variables:**
 
-     ```bash
+   Create a `.env` file in the project root with the following variables:
 
-     # Format: postgresql://USER:PASS@HOST:PORT/DATABASE?sslmode=disable
-     export DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/reesource_tracker?sslmode=disable"
-     ```
+   ```bash
+   DEV=true
+   DATABASE_URL=postgresql://USER:PASS@HOST:PORT/DATABASE?sslmode=disable
+   ```
+
+   - `DEV=true`: Enables development mode, which proxies frontend requests to the Vite dev server (running on port 5173). In production mode (when `DEV` is not set), the backend serves static files from the `client` directory.
+
+   - `DATABASE_URL`: Connection string for the PostgreSQL database.
+
+3. **Database setup:**
+   - Configure the `DATABASE_URL` in the `.env` file as shown above.
 
    - Migrations run automatically on startup.
 
-3. **SQLC code generation:**
+4. **SQLC code generation:**
    - Install SQLC directly via Go:
 
      ```powershell
@@ -48,7 +125,7 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
 
    - This will generate type-safe Go code for database access in `lib/database/query.sql.go`.
 
-4. **Run the backend:**
+5. **Run the backend:**
 
    ```powershell
 
@@ -86,7 +163,7 @@ Reesource Tracker is a full-stack application for tracking samples, products, an
 
 The project uses Testcontainers for integration testing with PostgreSQL.
 
-#### Setup
+#### Setup (Local Windows Development)
 
 1. **Configure Docker daemon to expose TCP socket:**
 
