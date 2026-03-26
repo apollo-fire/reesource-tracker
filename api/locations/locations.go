@@ -12,10 +12,10 @@ import (
 )
 
 type LocationResponse struct {
-	ID               []byte  `json:"ID"`
-	Name             string  `json:"Name"`
-	Description      string  `json:"Description"`
-	ParentLocationID *[]byte `json:"ParentLocationID,omitempty"`
+	ID               []byte         `json:"ID"`
+	Name             string         `json:"Name"`
+	Description      sql.NullString `json:"Description"`
+	ParentLocationID *[]byte        `json:"ParentLocationID,omitempty"`
 }
 
 func Routes(route *gin.RouterGroup) {
@@ -83,11 +83,9 @@ func getLocations(c *gin.Context) {
 	var responses []LocationResponse
 	for _, location := range res {
 		response := LocationResponse{
-			ID:   location.ID,
-			Name: location.Name,
-		}
-		if location.Description.Valid {
-			response.Description = location.Description.String
+			ID:          location.ID,
+			Name:        location.Name,
+			Description: location.Description,
 		}
 		if location.ParentLocationID.Valid {
 			response.ParentLocationID = &location.ParentLocationID.V
@@ -114,11 +112,9 @@ func getLocation(c *gin.Context) {
 		return
 	}
 	response := LocationResponse{
-		ID:   location.ID,
-		Name: location.Name,
-	}
-	if location.Description.Valid {
-		response.Description = location.Description.String
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
 	}
 	if location.ParentLocationID.Valid {
 		response.ParentLocationID = &location.ParentLocationID.V

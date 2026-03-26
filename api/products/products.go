@@ -12,10 +12,10 @@ import (
 )
 
 type ProductResponse struct {
-	ID              []byte  `json:"ID"`
-	Name            string  `json:"Name"`
-	ParentProductID *[]byte `json:"ParentProductID,omitempty"`
-	PartNumber      string  `json:"PartNumber"`
+	ID              []byte         `json:"ID"`
+	Name            string         `json:"Name"`
+	ParentProductID *[]byte        `json:"ParentProductID,omitempty"`
+	PartNumber      sql.NullString `json:"PartNumber"`
 }
 
 func Routes(route *gin.RouterGroup) {
@@ -105,14 +105,12 @@ func getProduct(c *gin.Context) {
 		return
 	}
 	response := ProductResponse{
-		ID:   product.ID,
-		Name: product.Name,
+		ID:         product.ID,
+		Name:       product.Name,
+		PartNumber: product.PartNumber,
 	}
 	if product.ParentProductID.Valid {
 		response.ParentProductID = &product.ParentProductID.V
-	}
-	if product.PartNumber.Valid {
-		response.PartNumber = product.PartNumber.String
 	}
 	c.JSON(http.StatusOK, response)
 }
@@ -151,7 +149,7 @@ func updateProduct(c *gin.Context) {
 		ID:              binary_uuid,
 		Name:            req.Name,
 		ParentProductID: sql.Null[[]byte]{V: parentBinaryUUID, Valid: parentBinaryUUID != nil},
-		PartNumber:      sql.NullString{String: req.PartNumber, Valid: true},
+		PartNumber:      sql.NullString{String: req.PartNumber, Valid: req.PartNumber != ""},
 	}
 	err := database.Connection.UpsertProduct(c, params)
 	if err != nil {
@@ -171,14 +169,12 @@ func getProducts(c *gin.Context) {
 	var responses []ProductResponse
 	for _, product := range res {
 		response := ProductResponse{
-			ID:   product.ID,
-			Name: product.Name,
+			ID:         product.ID,
+			Name:       product.Name,
+			PartNumber: product.PartNumber,
 		}
 		if product.ParentProductID.Valid {
 			response.ParentProductID = &product.ParentProductID.V
-		}
-		if product.PartNumber.Valid {
-			response.PartNumber = product.PartNumber.String
 		}
 		responses = append(responses, response)
 	}
