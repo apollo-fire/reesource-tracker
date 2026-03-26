@@ -25,7 +25,9 @@ func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migra
 		connStr = databaseURL
 		log.Println("Connecting to external PostgreSQL database...")
 	} else {
-		log.Fatal("ERROR: No database provided")
+		err := fmt.Errorf("environment variable DATABASE_URL is not set")
+		log.Print(err)
+		return nil, nil, err
 	}
 
 	db, err := sql.Open(DRIVER_NAME, connStr)
