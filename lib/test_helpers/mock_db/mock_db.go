@@ -94,17 +94,6 @@ func closeDBConnection() {
 	}
 }
 
-func CloseMockDB() error {
-	closeDBConnection()
-	if MockPgContainer != nil {
-		err := MockPgContainer.Terminate(context.Background())
-		MockPgContainer = nil
-		containerStarted = false
-		return err
-	}
-	return nil
-}
-
 func ResetMockDB() {
 	setupContainer()
 
