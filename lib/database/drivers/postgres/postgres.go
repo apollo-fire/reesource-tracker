@@ -34,16 +34,23 @@ func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migra
 	if err != nil {
 		return nil, nil, err
 	}
+	closeDB := func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Error closing postgres DB handle: %v", closeErr)
+		}
+	}
 
 	// Test the connection
 	err = db.PingContext(ctx)
 	if err != nil {
+		closeDB()
 		return nil, nil, fmt.Errorf("failed to ping PostgreSQL: %w", err)
 	}
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		log.Printf("Error creating postgres driver: %v", err)
+		closeDB()
 		return nil, nil, err
 	}
 
@@ -52,6 +59,7 @@ func Connect(ctx context.Context, migration_dir string) (*sql.DB, *migrate.Migra
 		DRIVER_NAME, driver)
 	if err != nil {
 		log.Printf("Error initialising migration: %v", err)
+		closeDB()
 		return nil, nil, err
 	}
 
