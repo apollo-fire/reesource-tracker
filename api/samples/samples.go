@@ -233,10 +233,12 @@ func getSamples(c *gin.Context) {
 			ProductIssue: sample.ProductIssue,
 		}
 		if sample.LocationID.Valid {
-			sampleResponse.LocationID = &sample.LocationID.V
+			v := sample.LocationID.V
+			sampleResponse.LocationID = &v
 		}
 		if sample.ProductID.Valid {
-			sampleResponse.ProductID = &sample.ProductID.V
+			v := sample.ProductID.V
+			sampleResponse.ProductID = &v
 		}
 		if sample.TimeRegistered.Valid {
 			timeStr := sample.TimeRegistered.Time.Format(time.RFC3339)
@@ -247,7 +249,8 @@ func getSamples(c *gin.Context) {
 			sampleResponse.LastUpdate = timeStr
 		}
 		if sample.OwnerID.Valid {
-			sampleResponse.OwnerID = &sample.OwnerID.V
+			v := sample.OwnerID.V
+			sampleResponse.OwnerID = &v
 		}
 		var modResponses []sample_mods.SampleModResponse
 		for _, mod := range mod_data {

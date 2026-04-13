@@ -88,7 +88,8 @@ func getLocations(c *gin.Context) {
 			Description: location.Description,
 		}
 		if location.ParentLocationID.Valid {
-			response.ParentLocationID = &location.ParentLocationID.V
+			v := location.ParentLocationID.V
+			response.ParentLocationID = &v
 		}
 		responses = append(responses, response)
 	}

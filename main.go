@@ -13,6 +13,7 @@ import (
 	"reesource-tracker/lib/database"
 	"runtime"
 	"strings"
+	"syscall"
 
 	_ "embed"
 
@@ -64,7 +65,7 @@ func main() {
 
 	}
 	// Create context with cancel for graceful shutdown
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	err := database.Connect(ctx)
 	if err != nil {

@@ -174,7 +174,8 @@ func getProducts(c *gin.Context) {
 			PartNumber: product.PartNumber,
 		}
 		if product.ParentProductID.Valid {
-			response.ParentProductID = &product.ParentProductID.V
+			v := product.ParentProductID.V
+			response.ParentProductID = &v
 		}
 		responses = append(responses, response)
 	}
