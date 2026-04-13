@@ -17,8 +17,19 @@ import (
 )
 
 type SampleData struct {
-	database.ListSamplesRow
-	Mods []database.SampleMod `json:"mods"`
+	SampleResponse
+	Mods []sample_mods.SampleModResponse `json:"mods"`
+}
+
+type SampleResponse struct {
+	ID             []byte         `json:"ID"`
+	LocationID     *[]byte        `json:"LocationID,omitempty"`
+	ProductID      *[]byte        `json:"ProductID,omitempty"`
+	TimeRegistered string         `json:"TimeRegistered"`
+	LastUpdate     string         `json:"LastUpdate"`
+	State          string         `json:"State"`
+	OwnerID        *[]byte        `json:"OwnerID,omitempty"`
+	ProductIssue   sql.NullString `json:"ProductIssue"`
 }
 
 const MAX_PROVISIONED_SAMPLES = 1000
@@ -66,7 +77,30 @@ func getSample(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"sample": res, "mods": mod_data})
+	sampleResponse := SampleResponse{
+		ID:    res.ID,
+		State: res.State,
+	}
+	if res.LocationID.Valid {
+		sampleResponse.LocationID = &res.LocationID.V
+	}
+	if res.ProductID.Valid {
+		sampleResponse.ProductID = &res.ProductID.V
+	}
+	if res.TimeRegistered.Valid {
+		timeStr := res.TimeRegistered.Time.Format(time.RFC3339)
+		sampleResponse.TimeRegistered = timeStr
+	}
+	if res.LastUpdate.Valid {
+		timeStr := res.LastUpdate.Time.Format(time.RFC3339)
+		sampleResponse.LastUpdate = timeStr
+	}
+	if res.OwnerID.Valid {
+		sampleResponse.OwnerID = &res.OwnerID.V
+	}
+	sampleResponse.ProductIssue = res.ProductIssue
+
+	c.JSON(http.StatusOK, gin.H{"sample": sampleResponse, "mods": mod_data})
 }
 
 func updateSample(c *gin.Context) {
@@ -96,14 +130,14 @@ func updateSample(c *gin.Context) {
 	RawSampleID := rawID[:]
 
 	type updateSampleRequest struct {
-		LocationID   string `json:"location_id"`
-		ProductID    string `json:"product_id"`
-		OwnerID      string `json:"owner_id"`
-		ProductIssue string `json:"product_issue"`
-		State        string `json:"state"`
+		LocationID   string `form:"location_id"`
+		ProductID    string `form:"product_id"`
+		OwnerID      string `form:"owner_id"`
+		ProductIssue string `form:"product_issue"`
+		State        string `form:"state"`
 	}
 	var req updateSampleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
 	}
@@ -126,10 +160,10 @@ func updateSample(c *gin.Context) {
 	current_time := time.Now()
 	res, err := database.Connection.UpdateOrCreateSample(c, database.UpdateOrCreateSampleParams{
 		ID:             RawSampleID,
-		LocationID:     locationBinary,
-		ProductID:      productBinary,
-		OwnerID:        ownerBinary,
-		ProductIssue:   sql.NullString{String: req.ProductIssue, Valid: true},
+		LocationID:     sql.Null[[]byte]{V: locationBinary, Valid: locationBinary != nil},
+		ProductID:      sql.Null[[]byte]{V: productBinary, Valid: productBinary != nil},
+		OwnerID:        sql.Null[[]byte]{V: ownerBinary, Valid: ownerBinary != nil},
+		ProductIssue:   sql.NullString{String: req.ProductIssue, Valid: req.ProductIssue != ""},
 		TimeRegistered: sql.NullTime{Time: current_time, Valid: true},
 		LastUpdate:     sql.NullTime{Time: current_time, Valid: true},
 		State:          req.State,
@@ -139,7 +173,45 @@ func updateSample(c *gin.Context) {
 		return
 	}
 	sync.BroadcastEvent("samples_updated", gin.H{})
-	c.JSON(http.StatusOK, res)
+
+	var locationID *[]byte
+	if res.LocationID.Valid {
+		v := res.LocationID.V
+		locationID = &v
+	}
+
+	var productID *[]byte
+	if res.ProductID.Valid {
+		v := res.ProductID.V
+		productID = &v
+	}
+
+	var ownerID *[]byte
+	if res.OwnerID.Valid {
+		v := res.OwnerID.V
+		ownerID = &v
+	}
+
+	var timeRegistered string
+	if res.TimeRegistered.Valid {
+		timeRegistered = res.TimeRegistered.Time.Format(time.RFC3339)
+	}
+
+	var lastUpdate string
+	if res.LastUpdate.Valid {
+		lastUpdate = res.LastUpdate.Time.Format(time.RFC3339)
+	}
+
+	c.JSON(http.StatusOK, SampleResponse{
+		LocationID:     locationID,
+		ProductID:      productID,
+		OwnerID:        ownerID,
+		ID:             res.ID,
+		TimeRegistered: timeRegistered,
+		LastUpdate:     lastUpdate,
+		State:          res.State,
+		ProductIssue:   res.ProductIssue,
+	})
 }
 
 func getSamples(c *gin.Context) {
@@ -150,13 +222,51 @@ func getSamples(c *gin.Context) {
 	}
 	var samples []SampleData = []SampleData{}
 	for _, sample := range res {
-		// Convert time_registered to a string
 		mod_data, err := database.Connection.ListSampleMods(c, sample.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		samples = append(samples, SampleData{sample, mod_data})
+		sampleResponse := SampleResponse{
+			ID:           sample.ID,
+			State:        sample.State,
+			ProductIssue: sample.ProductIssue,
+		}
+		if sample.LocationID.Valid {
+			v := sample.LocationID.V
+			sampleResponse.LocationID = &v
+		}
+		if sample.ProductID.Valid {
+			v := sample.ProductID.V
+			sampleResponse.ProductID = &v
+		}
+		if sample.TimeRegistered.Valid {
+			timeStr := sample.TimeRegistered.Time.Format(time.RFC3339)
+			sampleResponse.TimeRegistered = timeStr
+		}
+		if sample.LastUpdate.Valid {
+			timeStr := sample.LastUpdate.Time.Format(time.RFC3339)
+			sampleResponse.LastUpdate = timeStr
+		}
+		if sample.OwnerID.Valid {
+			v := sample.OwnerID.V
+			sampleResponse.OwnerID = &v
+		}
+		var modResponses []sample_mods.SampleModResponse
+		for _, mod := range mod_data {
+			modResponse := sample_mods.SampleModResponse{
+				ID:        mod.ID,
+				SampleID:  mod.SampleID,
+				Name:      mod.Name,
+				TimeAdded: mod.TimeAdded.Format(time.RFC3339),
+			}
+			if mod.TimeRemoved.Valid {
+				timeStr := mod.TimeRemoved.Time.Format(time.RFC3339)
+				modResponse.TimeRemoved = timeStr
+			}
+			modResponses = append(modResponses, modResponse)
+		}
+		samples = append(samples, SampleData{sampleResponse, modResponses})
 	}
 	c.JSON(http.StatusOK, samples)
 }

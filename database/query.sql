@@ -3,7 +3,7 @@ SELECT *
 FROM
     locations
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: GetLocations :many
 SELECT *
@@ -16,7 +16,7 @@ ORDER BY
 INSERT INTO
     locations (id, name, description, parent_location_id)
 VALUES
-    (?, ?, ?, ?) ON CONFLICT (id) DO
+    ($1, $2, $3, $4) ON CONFLICT (id) DO
 UPDATE
 SET
     name = EXCLUDED.name,
@@ -29,7 +29,7 @@ SELECT
     COALESCE(
         (
             SELECT
-                GROUP_CONCAT (sample_mods.name, ', ')
+                STRING_AGG(sample_mods.name, ', ')
             FROM
                 sample_mods
             WHERE
@@ -51,7 +51,7 @@ SELECT
 FROM
     sample_mods
 WHERE
-    sample_mods.sample_id = ?
+    sample_mods.sample_id = $1
 ORDER BY
     time_added;
 
@@ -59,24 +59,24 @@ ORDER BY
 INSERT INTO
     sample_mods (id, sample_id, name, time_added, time_removed)
 VALUES
-    (?, ?, ?, ?, NULL);
+    ($1, $2, $3, $4, NULL);
 
 -- name: RemoveSampleMod :exec
 UPDATE sample_mods
 SET
-    time_removed = ?
+    time_removed = $1
 WHERE
-    id = ?;
+    id = $2;
 
 -- name: DeleteProductByID :exec
 DELETE FROM products
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: DeleteLocationByID :exec
 DELETE FROM locations
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: GetProducts :many
 SELECT
@@ -99,7 +99,7 @@ INSERT INTO
         product_issue
     )
 VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO
+    ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (id) DO
 UPDATE
 SET
     location_id = EXCLUDED.location_id,
@@ -115,7 +115,7 @@ SELECT
 FROM
     samples
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: ListProducts :many
 SELECT
@@ -130,13 +130,13 @@ SELECT *
 FROM
     products
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: UpsertProduct :exec
 INSERT INTO
     products (id, name, parent_product_id, part_number)
 VALUES
-    (?, ?, ?, ?) ON CONFLICT (id) DO
+    ($1, $2, $3, $4) ON CONFLICT (id) DO
 UPDATE
 SET
     name = EXCLUDED.name,
@@ -149,7 +149,7 @@ SELECT *
 FROM
     users
 WHERE
-    id = ?;
+    id = $1;
 
 -- name: GetUsers :many
 SELECT *
@@ -162,7 +162,7 @@ ORDER BY
 INSERT INTO
     users (id, name)
 VALUES
-    (?, ?) ON CONFLICT (id) DO
+    ($1, $2) ON CONFLICT (id) DO
 UPDATE
 SET
     name = EXCLUDED.name;
@@ -170,4 +170,4 @@ SET
 -- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE
-    id = ?;
+    id = $1;

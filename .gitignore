@@ -3,3 +3,6 @@
 **/*.sqlite
 .env
 **/*.sqlite-**
+**/postgres_data/*
+**/.pgpassword
+**_bin.exe

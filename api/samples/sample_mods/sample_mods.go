@@ -13,6 +13,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type SampleModResponse struct {
+	ID          []byte `json:"ID"`
+	SampleID    []byte `json:"SampleID"`
+	Name        string `json:"Name"`
+	TimeAdded   string `json:"TimeAdded"`
+	TimeRemoved string `json:"TimeRemoved"`
+}
+
 func Routes(route *gin.RouterGroup) {
 	route.POST("/", addMod)
 	route.DELETE("/:mod_id", removeMod)
@@ -99,5 +107,19 @@ func listMods(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"mods": mods})
+	var responses []SampleModResponse
+	for _, mod := range mods {
+		response := SampleModResponse{
+			ID:        mod.ID,
+			SampleID:  mod.SampleID,
+			Name:      mod.Name,
+			TimeAdded: mod.TimeAdded.Format(time.RFC3339),
+		}
+		if mod.TimeRemoved.Valid {
+			timeStr := mod.TimeRemoved.Time.Format(time.RFC3339)
+			response.TimeRemoved = timeStr
+		}
+		responses = append(responses, response)
+	}
+	c.JSON(http.StatusOK, gin.H{"mods": responses})
 }

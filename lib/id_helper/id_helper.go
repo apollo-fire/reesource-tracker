@@ -25,3 +25,16 @@ func MustParseAndMarshalUUID(id string) ([]byte, string, bool) {
 	}
 	return b, "", true
 }
+
+// UnmarshalUUID converts a binary UUID ([]byte) back to a string representation.
+func UnmarshalUUID(b []byte) (string, error) {
+	if b == nil {
+		return "", nil
+	}
+	var u uuid.UUID
+	err := u.UnmarshalBinary(b)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}

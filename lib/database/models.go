@@ -10,67 +10,67 @@ import (
 )
 
 type AppliedTag struct {
-	ID          interface{}
-	SampleID    interface{}
-	TagID       interface{}
+	ID          []byte
+	SampleID    []byte
+	TagID       []byte
 	DateAdded   sql.NullTime
 	DateRemoved sql.NullTime
 }
 
 type Location struct {
-	ID               interface{}
+	ID               []byte
 	Name             string
 	Description      sql.NullString
-	ParentLocationID interface{}
+	ParentLocationID sql.Null[[]byte]
 }
 
 type Product struct {
-	ID              interface{}
+	ID              []byte
 	Name            string
-	ParentProductID interface{}
+	ParentProductID sql.Null[[]byte]
 	PartNumber      sql.NullString
 }
 
 type Sample struct {
-	ID             interface{}
-	LocationID     interface{}
-	ProductID      interface{}
+	ID             []byte
+	LocationID     sql.Null[[]byte]
+	ProductID      sql.Null[[]byte]
 	TimeRegistered sql.NullTime
 	LastUpdate     sql.NullTime
 	State          string
-	OwnerID        interface{}
+	OwnerID        sql.Null[[]byte]
 	ProductIssue   sql.NullString
 }
 
 type SampleComment struct {
-	ID        interface{}
-	SampleID  interface{}
+	ID        []byte
+	SampleID  []byte
 	Comment   string
 	CreatedAt sql.NullTime
 }
 
 type SampleMod struct {
-	ID          interface{}
-	SampleID    interface{}
+	ID          []byte
+	SampleID    []byte
 	Name        string
 	TimeAdded   time.Time
 	TimeRemoved sql.NullTime
 }
 
 type SampleNote struct {
-	ID       interface{}
-	SampleID interface{}
+	ID       []byte
+	SampleID []byte
 	Contents string
 	TimeMade time.Time
 }
 
 type Tag struct {
-	ID        interface{}
+	ID        []byte
 	Name      string
 	Removable sql.NullBool
 }
 
 type User struct {
-	ID   interface{}
+	ID   []byte
 	Name string
 }

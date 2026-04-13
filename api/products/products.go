@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProductResponse struct {
+	ID              []byte         `json:"ID"`
+	Name            string         `json:"Name"`
+	ParentProductID *[]byte        `json:"ParentProductID,omitempty"`
+	PartNumber      sql.NullString `json:"PartNumber"`
+}
+
 func Routes(route *gin.RouterGroup) {
 	route.GET("/products", getProducts)
 	route.POST("/product", createProduct)
@@ -45,7 +52,7 @@ func createProduct(c *gin.Context) {
 		Name            string  `json:"name"`
 		ParentProductID *string `json:"parent_product_id"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -54,11 +61,23 @@ func createProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate product ID"})
 		return
 	}
+
+	// Convert parent product ID if provided
+	var parentProductIDBytes []byte
+	if req.ParentProductID != nil {
+		var ok bool
+		parentProductIDBytes, _, ok = id_helper.MustParseAndMarshalUUID(*req.ParentProductID)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parent product ID format"})
+			return
+		}
+	}
+
 	// UpsertProduct expects UpsertProductParams struct
 	params := database.UpsertProductParams{
 		ID:              new_uid,
 		Name:            req.Name,
-		ParentProductID: req.ParentProductID,
+		ParentProductID: sql.Null[[]byte]{V: parentProductIDBytes, Valid: parentProductIDBytes != nil},
 	}
 	err = database.Connection.UpsertProduct(c, params)
 	if err != nil {
@@ -75,12 +94,25 @@ func getProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id required"})
 		return
 	}
-	product, err := database.Connection.GetProductByID(c, productID)
+	productIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(productID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	product, err := database.Connection.GetProductByID(c, productIDBytes)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, product)
+	response := ProductResponse{
+		ID:         product.ID,
+		Name:       product.Name,
+		PartNumber: product.PartNumber,
+	}
+	if product.ParentProductID.Valid {
+		response.ParentProductID = &product.ParentProductID.V
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func updateProduct(c *gin.Context) {
@@ -94,7 +126,7 @@ func updateProduct(c *gin.Context) {
 		ParentProductID string `json:"parent_product_id"`
 		PartNumber      string `json:"part_number"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -116,8 +148,8 @@ func updateProduct(c *gin.Context) {
 	params := database.UpsertProductParams{
 		ID:              binary_uuid,
 		Name:            req.Name,
-		ParentProductID: parentBinaryUUID,
-		PartNumber:      sql.NullString{String: req.PartNumber, Valid: true},
+		ParentProductID: sql.Null[[]byte]{V: parentBinaryUUID, Valid: parentBinaryUUID != nil},
+		PartNumber:      sql.NullString{String: req.PartNumber, Valid: req.PartNumber != ""},
 	}
 	err := database.Connection.UpsertProduct(c, params)
 	if err != nil {
@@ -134,5 +166,18 @@ func getProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	var responses []ProductResponse
+	for _, product := range res {
+		response := ProductResponse{
+			ID:         product.ID,
+			Name:       product.Name,
+			PartNumber: product.PartNumber,
+		}
+		if product.ParentProductID.Valid {
+			v := product.ParentProductID.V
+			response.ParentProductID = &v
+		}
+		responses = append(responses, response)
+	}
+	c.JSON(http.StatusOK, responses)
 }

@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type LocationResponse struct {
+	ID               []byte         `json:"ID"`
+	Name             string         `json:"Name"`
+	Description      sql.NullString `json:"Description"`
+	ParentLocationID *[]byte        `json:"ParentLocationID,omitempty"`
+}
+
 func Routes(route *gin.RouterGroup) {
 	route.GET("/locations", getLocations)
 	route.POST("/location", createLocation)
@@ -44,7 +51,7 @@ func createLocation(c *gin.Context) {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
@@ -73,7 +80,20 @@ func getLocations(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	c.JSON(200, res)
+	var responses []LocationResponse
+	for _, location := range res {
+		response := LocationResponse{
+			ID:          location.ID,
+			Name:        location.Name,
+			Description: location.Description,
+		}
+		if location.ParentLocationID.Valid {
+			v := location.ParentLocationID.V
+			response.ParentLocationID = &v
+		}
+		responses = append(responses, response)
+	}
+	c.JSON(200, responses)
 }
 
 func getLocation(c *gin.Context) {
@@ -82,12 +102,25 @@ func getLocation(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "id required"})
 		return
 	}
-	location, err := database.Connection.GetLocation(c, locationID)
+	locationIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(locationID)
+	if !ok {
+		c.JSON(400, gin.H{"error": errMsg})
+		return
+	}
+	location, err := database.Connection.GetLocation(c, locationIDBytes)
 	if err != nil {
 		c.JSON(404, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, location)
+	response := LocationResponse{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+	}
+	if location.ParentLocationID.Valid {
+		response.ParentLocationID = &location.ParentLocationID.V
+	}
+	c.JSON(200, response)
 }
 
 func updateLocation(c *gin.Context) {
@@ -96,7 +129,7 @@ func updateLocation(c *gin.Context) {
 		Description      string `json:"description"`
 		ParentLocationID string `json:"parent_location_id"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
@@ -125,7 +158,7 @@ func updateLocation(c *gin.Context) {
 		ID:               binary_uuid,
 		Name:             req.Name,
 		Description:      sql.NullString{String: req.Description, Valid: req.Description != ""},
-		ParentLocationID: parentBinaryUUID,
+		ParentLocationID: sql.Null[[]byte]{V: parentBinaryUUID, Valid: parentBinaryUUID != nil},
 	}
 	err := database.Connection.UpsertLocation(c, params)
 	if err != nil {

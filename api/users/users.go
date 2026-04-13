@@ -10,6 +10,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserResponse struct {
+	ID   []byte `json:"ID"`
+	Name string `json:"Name"`
+}
+
 func Routes(route *gin.RouterGroup) {
 	route.GET("/users", getUsers)
 	route.POST("/user", createUser)
@@ -43,7 +48,7 @@ func createUser(c *gin.Context) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -71,12 +76,21 @@ func getUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
 		return
 	}
-	user, err := database.Connection.GetUserByID(c, userID)
+	userIDBytes, errMsg, ok := id_helper.MustParseAndMarshalUUID(userID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	user, err := database.Connection.GetUserByID(c, userIDBytes)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	response := UserResponse{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func updateUser(c *gin.Context) {
@@ -88,7 +102,7 @@ func updateUser(c *gin.Context) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -116,5 +130,12 @@ func getUsers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	var responses []UserResponse
+	for _, user := range res {
+		responses = append(responses, UserResponse{
+			ID:   user.ID,
+			Name: user.Name,
+		})
+	}
+	c.JSON(http.StatusOK, responses)
 }

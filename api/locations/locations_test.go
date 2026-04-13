@@ -81,7 +81,7 @@ func TestGetLocation_MissingID(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/location/bad_id", nil)
 	r.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
+	assert.Equal(t, 400, w.Code) // Invalid UUID format should return 400 Bad Request
 }
 
 func TestGetLocation_NotFound(t *testing.T) {

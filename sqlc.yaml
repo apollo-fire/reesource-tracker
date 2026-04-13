@@ -1,9 +1,16 @@
 version: "2"
 sql:
-  - engine: "sqlite"
+  - engine: "postgresql"
     queries: "database/query.sql"
     schema: "database/migrations"
     gen:
       go:
         package: "database"
         out: "lib/database"
+        overrides:
+          - db_type: "pg_catalog.bytea"
+            nullable: true
+            go_type: "database/sql.Null[[]byte]"
+          - db_type: "bytea"
+            nullable: true
+            go_type: "database/sql.Null[[]byte]"
