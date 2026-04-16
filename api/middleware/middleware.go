@@ -24,13 +24,40 @@ func SetCookieSecret(secret []byte) {
 	cookieSecret = secret
 }
 
+func isSecureRequest(c *gin.Context) bool {
+	if c.Request != nil && c.Request.TLS != nil {
+		return true
+	}
+
+	xForwardedProto := c.GetHeader("X-Forwarded-Proto")
+	for _, proto := range strings.Split(xForwardedProto, ",") {
+		if strings.EqualFold(strings.TrimSpace(proto), "https") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func setSessionCookieValue(c *gin.Context, token string) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   sessionDuration,
+		HttpOnly: true,
+		Secure:   isSecureRequest(c),
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 // SetSessionCookie signs and sets the auth cookie on the response.
 func SetSessionCookie(c *gin.Context, userID []byte) error {
 	token, err := libauth.BuildSessionToken(cookieSecret, userID, libauth.SessionDuration)
 	if err != nil {
 		return err
 	}
-	c.SetCookie(SessionCookieName, token, sessionDuration, "/", "", false, true)
+	setSessionCookieValue(c, token)
 	return nil
 }
 
@@ -41,7 +68,7 @@ func SetSessionCookieWithCredential(c *gin.Context, userID []byte, credentialID 
 	if err != nil {
 		return err
 	}
-	c.SetCookie(SessionCookieName, token, sessionDuration, "/", "", false, true)
+	setSessionCookieValue(c, token)
 	return nil
 }
 
@@ -199,6 +226,9 @@ func RequireConfirmedAction() gin.HandlerFunc {
 // hydrateSessionIntoContext reads and validates the session cookie, then stores
 // the user ID in the Gin context for subsequent handlers.
 func hydrateSessionIntoContext(c *gin.Context) error {
+	if _, exists := c.Get("auth_user_id"); exists {
+		return nil
+	}
 	userID, credentialID, err := ParseSessionCookieWithCredential(c)
 	if err != nil {
 		return err

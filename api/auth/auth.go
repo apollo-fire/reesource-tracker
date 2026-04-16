@@ -567,9 +567,13 @@ func passkeyListResponse(rows []database.Passkey, activeCredentialID []byte) []g
 		if row.RevokedAt.Valid {
 			continue
 		}
+		label := ""
+		if row.Label.Valid {
+			label = row.Label.String
+		}
 		res = append(res, gin.H{
 			"credential_id":      hex.EncodeToString(row.CredentialID),
-			"label":              row.Label,
+			"label":              label,
 			"created_at":         row.CreatedAt,
 			"is_current_session": len(activeCredentialID) > 0 && bytes.Equal(row.CredentialID, activeCredentialID),
 		})

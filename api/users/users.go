@@ -80,13 +80,16 @@ func createUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err = database.Connection.SetUserRole(c, database.SetUserRoleParams{UserID: new_uid, Role: libauth.RoleUser}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	actor, _ := middleware.CurrentUserID(c)
 	link, linkErr := libauth.CreateStandardAssignmentLinkForUser(c, new_uid, actor)
 	if linkErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": linkErr.Error()})
 		return
 	}
-	_ = database.Connection.SetUserRole(c, database.SetUserRoleParams{UserID: new_uid, Role: libauth.RoleUser})
 	_ = libauth.AuditLog(c, &actor, "user_created", "user", userIDString(new_uid), gin.H{"name": req.Name})
 	c.JSON(http.StatusOK, gin.H{"status": "success", "assignment_token": link.TokenHash, "expires_at": link.ExpiresAt.Time, "link_id": link.ID})
 	sync.BroadcastEvent("users_updated", gin.H{})
@@ -153,18 +156,17 @@ func updateUser(c *gin.Context) {
 }
 
 func getUsers(c *gin.Context) {
-	res, err := database.Connection.GetUsers(c)
+	res, err := database.Connection.GetUsersWithRoles(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	var responses []UserResponse
+	responses := make([]UserResponse, 0, len(res))
 	for _, user := range res {
-		roles, _ := database.Connection.ListUserRoles(c, user.ID)
 		responses = append(responses, UserResponse{
 			ID:    user.ID,
 			Name:  user.Name,
-			Roles: roles,
+			Roles: user.Roles,
 		})
 	}
 	c.JSON(http.StatusOK, responses)
