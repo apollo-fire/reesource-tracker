@@ -415,6 +415,14 @@ LIMIT $1 OFFSET $2;
 DELETE FROM audit_logs
 WHERE created_at < $1;
 
+-- name: GetUsersWithRoles :many
+SELECT users.id, users.name,
+    ARRAY_REMOVE(ARRAY_AGG(user_roles.role ORDER BY user_roles.role), NULL)::text[] AS roles
+FROM users
+LEFT JOIN user_roles ON user_roles.user_id = users.id
+GROUP BY users.id, users.name
+ORDER BY users.name;
+
 -- name: ClearAllAdminRoles :exec
 DELETE FROM user_roles
 WHERE role = 'admin';

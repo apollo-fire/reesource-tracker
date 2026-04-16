@@ -10,6 +10,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 const addSampleMod = `-- name: AddSampleMod :exec
@@ -570,6 +572,44 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUsersWithRoles = `-- name: GetUsersWithRoles :many
+SELECT users.id, users.name,
+    ARRAY_REMOVE(ARRAY_AGG(user_roles.role ORDER BY user_roles.role), NULL)::text[] AS roles
+FROM users
+LEFT JOIN user_roles ON user_roles.user_id = users.id
+GROUP BY users.id, users.name
+ORDER BY users.name
+`
+
+type GetUsersWithRolesRow struct {
+	ID    []byte
+	Name  string
+	Roles []string
+}
+
+func (q *Queries) GetUsersWithRoles(ctx context.Context) ([]GetUsersWithRolesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUsersWithRoles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersWithRolesRow
+	for rows.Next() {
+		var i GetUsersWithRolesRow
+		if err := rows.Scan(&i.ID, &i.Name, pq.Array(&i.Roles)); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
