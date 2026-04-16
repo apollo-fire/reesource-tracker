@@ -51,6 +51,9 @@ func ParseSessionToken(secret []byte, token string) ([]byte, error) {
 }
 
 func ParseSessionTokenWithCredential(secret []byte, token string) ([]byte, []byte, error) {
+	if len(secret) == 0 {
+		return nil, nil, errors.New("missing session secret")
+	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 && len(parts) != 4 {
 		return nil, nil, errors.New("invalid session token")

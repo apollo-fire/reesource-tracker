@@ -39,6 +39,9 @@
                     challenge: begin.challenge,
                     credential_id: assertion.credentialID,
                     sign_counter: assertion.signCounter,
+                    client_data_json: assertion.clientDataJSON,
+                    authenticator_data: assertion.authenticatorData,
+                    signature: assertion.signature,
                 }),
             });
             if (!finishRes.ok) {

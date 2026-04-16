@@ -33,3 +33,9 @@ func TestParseSessionTokenWithCredential_LegacyFormat(t *testing.T) {
 	require.Equal(t, userID, parsedUserID)
 	require.Nil(t, parsedCredentialID)
 }
+
+func TestParseSessionTokenWithCredential_EmptySecret(t *testing.T) {
+	_, _, err := ParseSessionTokenWithCredential([]byte{}, "some.valid.looking.token")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing session secret")
+}

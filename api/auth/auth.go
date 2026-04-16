@@ -192,6 +192,7 @@ func finishRegistration(c *gin.Context) {
 		PublicKey      string   `json:"public_key"`
 		Label          string   `json:"label"`
 		Transports     []string `json:"transports"`
+		ClientDataJSON string   `json:"client_data_json"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -209,6 +210,7 @@ func finishRegistration(c *gin.Context) {
 		PublicKey:      req.PublicKey,
 		Label:          req.Label,
 		Transports:     req.Transports,
+		ClientDataJSON: req.ClientDataJSON,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -242,10 +244,13 @@ func beginLogin(c *gin.Context) {
 
 func finishLogin(c *gin.Context) {
 	var req struct {
-		ChallengeToken string `json:"challenge_token"`
-		Challenge      string `json:"challenge"`
-		CredentialID   string `json:"credential_id"`
-		SignCounter    int64  `json:"sign_counter"`
+		ChallengeToken    string `json:"challenge_token"`
+		Challenge         string `json:"challenge"`
+		CredentialID      string `json:"credential_id"`
+		SignCounter       int64  `json:"sign_counter"`
+		ClientDataJSON    string `json:"client_data_json"`
+		AuthenticatorData string `json:"authenticator_data"`
+		Signature         string `json:"signature"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -257,10 +262,13 @@ func finishLogin(c *gin.Context) {
 		return
 	}
 	userID, err := libauth.FinishLogin(c, libauth.FinishLoginInput{
-		ChallengeToken: req.ChallengeToken,
-		Challenge:      req.Challenge,
-		CredentialID:   req.CredentialID,
-		SignCounter:    req.SignCounter,
+		ChallengeToken:    req.ChallengeToken,
+		Challenge:         req.Challenge,
+		CredentialID:      req.CredentialID,
+		SignCounter:       req.SignCounter,
+		ClientDataJSON:    req.ClientDataJSON,
+		AuthenticatorData: req.AuthenticatorData,
+		Signature:         req.Signature,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -305,12 +313,12 @@ func logout(c *gin.Context) {
 
 func createSelfAssignmentLink(c *gin.Context) {
 	userID, _ := middleware.CurrentUserID(c)
-	row, err := libauth.CreateStandardAssignmentLinkForUser(c, userID, userID)
+	row, rawToken, err := libauth.CreateStandardAssignmentLinkForUser(c, userID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, assignmentLinkResponse(c, row))
+	c.JSON(http.StatusOK, assignmentLinkResponse(c, row, rawToken))
 }
 
 func getSelfAssignmentLink(c *gin.Context) {
@@ -324,7 +332,9 @@ func getSelfAssignmentLink(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	res := assignmentLinkResponse(c, row)
+	// The raw token is only available at creation time; we cannot recover it
+	// from the stored hash. Return metadata without the token.
+	res := assignmentLinkResponse(c, row, "")
 	res["has_active_link"] = true
 	c.JSON(http.StatusOK, res)
 }
@@ -400,12 +410,12 @@ func adminCreateAssignmentLink(c *gin.Context) {
 		return
 	}
 	actor, _ := middleware.CurrentUserID(c)
-	row, err := libauth.CreateStandardAssignmentLinkForUser(c, uid, actor)
+	row, rawToken, err := libauth.CreateStandardAssignmentLinkForUser(c, uid, actor)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, assignmentLinkResponse(c, row))
+	c.JSON(http.StatusOK, assignmentLinkResponse(c, row, rawToken))
 }
 
 func adminGetActiveAssignmentLink(c *gin.Context) {
@@ -425,7 +435,8 @@ func adminGetActiveAssignmentLink(c *gin.Context) {
 		return
 	}
 
-	res := assignmentLinkResponse(c, row)
+	// The raw token is only available at creation time; return metadata only.
+	res := assignmentLinkResponse(c, row, "")
 	res["has_active_link"] = true
 	c.JSON(http.StatusOK, res)
 }
@@ -533,11 +544,17 @@ func adminListAuditLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, rows)
 }
 
-func assignmentLinkResponse(c *gin.Context, row database.PasskeyAssignmentLink) gin.H {
+// assignmentLinkResponse builds the JSON response for an assignment link.
+// rawToken should be the raw (unhashed) token returned at creation time; pass
+// an empty string for read-only endpoints where the token cannot be recovered
+// from the stored hash.
+func assignmentLinkResponse(c *gin.Context, row database.PasskeyAssignmentLink, rawToken string) gin.H {
 	res := gin.H{
-		"link_id":          row.ID,
-		"assignment_token": row.TokenHash,
-		"assignment_url":   buildAssignmentURL(c, row.TokenHash),
+		"link_id": row.ID,
+	}
+	if rawToken != "" {
+		res["assignment_token"] = rawToken
+		res["assignment_url"] = buildAssignmentURL(c, rawToken)
 	}
 	if row.ExpiresAt.Valid {
 		res["expires_at"] = row.ExpiresAt.Time

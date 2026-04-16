@@ -1,8 +1,15 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
@@ -32,6 +39,9 @@ type FinishRegistrationInput struct {
 	PublicKey      string
 	Label          string
 	Transports     []string
+	// ClientDataJSON is the base64url-encoded raw clientDataJSON bytes from
+	// the authenticator. Required for server-side challenge verification.
+	ClientDataJSON string
 }
 
 type BeginLoginResult struct {
@@ -44,6 +54,10 @@ type FinishLoginInput struct {
 	Challenge      string
 	CredentialID   string
 	SignCounter    int64
+	// WebAuthn assertion fields required for server-side verification.
+	ClientDataJSON    string
+	AuthenticatorData string
+	Signature         string
 }
 
 func BeginRegistration(ctx context.Context, assignmentToken string) (BeginRegistrationResult, error) {
@@ -51,7 +65,7 @@ func BeginRegistration(ctx context.Context, assignmentToken string) (BeginRegist
 		return BeginRegistrationResult{}, errors.New("assignment_token is required")
 	}
 
-	link, err := database.Connection.GetActiveAssignmentLinkByTokenHash(ctx, assignmentToken)
+	link, err := database.Connection.GetActiveAssignmentLinkByTokenHash(ctx, HashToken(assignmentToken))
 	if err != nil {
 		return BeginRegistrationResult{}, errors.New("invalid or expired assignment link")
 	}
@@ -98,8 +112,8 @@ func BeginRegistration(ctx context.Context, assignmentToken string) (BeginRegist
 }
 
 func FinishRegistration(ctx context.Context, in FinishRegistrationInput) ([]byte, error) {
-	if in.ChallengeToken == "" || in.CredentialID == "" || in.PublicKey == "" {
-		return nil, errors.New("challenge_token, credential_id and public_key are required")
+	if in.ChallengeToken == "" || in.CredentialID == "" || in.PublicKey == "" || in.ClientDataJSON == "" {
+		return nil, errors.New("challenge_token, credential_id, public_key and client_data_json are required")
 	}
 
 	challenge, err := database.Connection.GetActiveAuthChallenge(ctx, in.ChallengeToken)
@@ -113,6 +127,11 @@ func FinishRegistration(ctx context.Context, in FinishRegistrationInput) ([]byte
 	}
 	if payload.Flow != "register" || payload.ChallengeValue != in.Challenge {
 		return nil, errors.New("challenge mismatch")
+	}
+
+	// Verify the authenticator used the server-issued challenge.
+	if err := verifyClientDataJSON(in.ClientDataJSON, "webauthn.create", payload.ChallengeValue); err != nil {
+		return nil, err
 	}
 
 	link, err := database.Connection.GetAssignmentLinkByID(ctx, payload.AssignmentLinkID)
@@ -198,6 +217,9 @@ func FinishLogin(ctx context.Context, in FinishLoginInput) ([]byte, error) {
 	if in.ChallengeToken == "" || in.CredentialID == "" {
 		return nil, errors.New("challenge_token and credential_id are required")
 	}
+	if in.ClientDataJSON == "" || in.AuthenticatorData == "" || in.Signature == "" {
+		return nil, errors.New("client_data_json, authenticator_data and signature are required")
+	}
 
 	challenge, err := database.Connection.GetActiveAuthChallenge(ctx, in.ChallengeToken)
 	if err != nil {
@@ -222,6 +244,11 @@ func FinishLogin(ctx context.Context, in FinishLoginInput) ([]byte, error) {
 		return nil, errors.New("credential does not match user")
 	}
 
+	// Verify the WebAuthn assertion: challenge binding and signature.
+	if err := verifyPasskeyAssertion(in.ClientDataJSON, in.AuthenticatorData, in.Signature, passkey.PublicKey, payload.ChallengeValue); err != nil {
+		return nil, err
+	}
+
 	if in.SignCounter > passkey.SignCounter {
 		_ = database.Connection.UpdatePasskeySignCounter(ctx, database.UpdatePasskeySignCounterParams{
 			CredentialID: credentialID,
@@ -233,4 +260,109 @@ func FinishLogin(ctx context.Context, in FinishLoginInput) ([]byte, error) {
 	_ = AuditLog(ctx, &passkey.UserID, "passkey_login", "user", IDOrEmpty(passkey.UserID), map[string]any{})
 
 	return passkey.UserID, nil
+}
+
+// webAuthnClientData is the subset of the clientDataJSON object that we need
+// for server-side WebAuthn verification.
+type webAuthnClientData struct {
+	Type      string `json:"type"`
+	Challenge string `json:"challenge"`
+}
+
+// verifyClientDataJSON decodes the base64url-encoded clientDataJSON, checks
+// that the embedded type matches expectedType, and verifies that the challenge
+// bytes equal the SHA-256-hex challenge stored on the server.
+func verifyClientDataJSON(clientDataJSONB64, expectedType, expectedChallengeHex string) error {
+	raw, err := DecodeBase64(clientDataJSONB64)
+	if err != nil {
+		return errors.New("invalid client_data_json encoding")
+	}
+	var cd webAuthnClientData
+	if err := json.Unmarshal(raw, &cd); err != nil {
+		return errors.New("invalid client_data_json format")
+	}
+	if cd.Type != expectedType {
+		return errors.New("unexpected webauthn type in client_data_json")
+	}
+	expectedBytes, err := hex.DecodeString(expectedChallengeHex)
+	if err != nil {
+		return errors.New("internal: invalid challenge hex")
+	}
+	receivedBytes, err := DecodeBase64(cd.Challenge)
+	if err != nil {
+		return errors.New("invalid challenge encoding in client_data_json")
+	}
+	if !bytes.Equal(expectedBytes, receivedBytes) {
+		return errors.New("challenge mismatch in client_data_json")
+	}
+	return nil
+}
+
+// verifyPasskeyAssertion validates a WebAuthn authentication assertion. It
+// verifies the challenge embedded in clientDataJSON and then checks the ECDSA
+// or RSA signature over the standard WebAuthn signed-data:
+//
+//	authenticatorData || SHA-256(clientDataJSON)
+func verifyPasskeyAssertion(clientDataJSONB64, authenticatorDataB64, signatureB64 string, storedPublicKey []byte, expectedChallengeHex string) error {
+	raw, err := DecodeBase64(clientDataJSONB64)
+	if err != nil {
+		return errors.New("invalid client_data_json encoding")
+	}
+	var cd webAuthnClientData
+	if err := json.Unmarshal(raw, &cd); err != nil {
+		return errors.New("invalid client_data_json format")
+	}
+	if cd.Type != "webauthn.get" {
+		return errors.New("unexpected webauthn type in client_data_json")
+	}
+	expectedBytes, err := hex.DecodeString(expectedChallengeHex)
+	if err != nil {
+		return errors.New("internal: invalid challenge hex")
+	}
+	receivedBytes, err := DecodeBase64(cd.Challenge)
+	if err != nil {
+		return errors.New("invalid challenge encoding in client_data_json")
+	}
+	if !bytes.Equal(expectedBytes, receivedBytes) {
+		return errors.New("challenge mismatch in client_data_json")
+	}
+
+	authData, err := DecodeBase64(authenticatorDataB64)
+	if err != nil {
+		return errors.New("invalid authenticator_data encoding")
+	}
+	if len(authData) < 37 {
+		return errors.New("authenticator_data too short")
+	}
+
+	sig, err := DecodeBase64(signatureB64)
+	if err != nil {
+		return errors.New("invalid signature encoding")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(storedPublicKey)
+	if err != nil {
+		return errors.New("cannot parse stored public key")
+	}
+
+	// signedData = authenticatorData || SHA-256(clientDataJSON)
+	clientDataHash := sha256.Sum256(raw)
+	signedData := make([]byte, len(authData)+sha256.Size)
+	copy(signedData, authData)
+	copy(signedData[len(authData):], clientDataHash[:])
+	msgHash := sha256.Sum256(signedData)
+
+	switch key := pub.(type) {
+	case *ecdsa.PublicKey:
+		if !ecdsa.VerifyASN1(key, msgHash[:], sig) {
+			return errors.New("assertion signature verification failed")
+		}
+	case *rsa.PublicKey:
+		if err := rsa.VerifyPKCS1v15(key, crypto.SHA256, msgHash[:], sig); err != nil {
+			return errors.New("assertion signature verification failed")
+		}
+	default:
+		return errors.New("unsupported public key algorithm")
+	}
+	return nil
 }

@@ -85,13 +85,13 @@ func createUser(c *gin.Context) {
 		return
 	}
 	actor, _ := middleware.CurrentUserID(c)
-	link, linkErr := libauth.CreateStandardAssignmentLinkForUser(c, new_uid, actor)
+	link, rawToken, linkErr := libauth.CreateStandardAssignmentLinkForUser(c, new_uid, actor)
 	if linkErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": linkErr.Error()})
 		return
 	}
 	_ = libauth.AuditLog(c, &actor, "user_created", "user", userIDString(new_uid), gin.H{"name": req.Name})
-	c.JSON(http.StatusOK, gin.H{"status": "success", "assignment_token": link.TokenHash, "expires_at": link.ExpiresAt.Time, "link_id": link.ID})
+	c.JSON(http.StatusOK, gin.H{"status": "success", "assignment_token": rawToken, "expires_at": link.ExpiresAt.Time, "link_id": link.ID})
 	sync.BroadcastEvent("users_updated", gin.H{})
 }
 

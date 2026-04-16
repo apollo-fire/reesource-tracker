@@ -38,7 +38,10 @@ func EnsureBootstrapState(ctx context.Context) (bool, string, string, error) {
 	active, err := database.Connection.GetActiveBootstrapLink(ctx)
 	if err == nil {
 		uid, _ := id_helper.UnmarshalUUID(active.UserID)
-		return true, active.TokenHash, uid, nil
+		// The raw token is not recoverable from the stored hash. Return an
+		// empty token; callers must initiate a fresh bootstrap flow to obtain
+		// a usable assignment token.
+		return true, "", uid, nil
 	}
 
 	// No active bootstrap link yet. Let the user choose an existing account or create a new one.
@@ -63,10 +66,11 @@ func SelectBootstrapUser(ctx context.Context, userID []byte) (string, string, er
 	if err != nil {
 		return "", "", err
 	}
+	tokenHash := HashToken(token)
 
 	_ = database.Connection.RevokeActiveBootstrapLinks(ctx)
 	row, err := database.Connection.CreateAssignmentLink(ctx, database.CreateAssignmentLinkParams{
-		TokenHash:       token,
+		TokenHash:       tokenHash,
 		UserID:          userID,
 		CreatedByUserID: sql.Null[[]byte]{Valid: false},
 		Purpose:         "bootstrap",
@@ -77,7 +81,7 @@ func SelectBootstrapUser(ctx context.Context, userID []byte) (string, string, er
 	}
 	uid, _ := id_helper.UnmarshalUUID(row.UserID)
 	_ = AuditLog(ctx, nil, "bootstrap_link_created", "user", uid, map[string]any{})
-	return row.TokenHash, uid, nil
+	return token, uid, nil
 }
 
 func CreateBootstrapUserAndSelect(ctx context.Context, name string) (string, string, error) {
@@ -122,28 +126,33 @@ func RunAuditRetentionCleanup(ctx context.Context, cfg RuntimeConfig) {
 	}()
 }
 
-func CreateStandardAssignmentLinkForUser(ctx context.Context, targetUserID []byte, createdBy []byte) (database.PasskeyAssignmentLink, error) {
+// CreateStandardAssignmentLinkForUser creates a new passkey-assignment link for
+// targetUserID. Only a SHA-256 hash of the raw token is persisted; the raw
+// token is returned as the second value and must be delivered to the recipient
+// at this point — it cannot be recovered later.
+func CreateStandardAssignmentLinkForUser(ctx context.Context, targetUserID []byte, createdBy []byte) (database.PasskeyAssignmentLink, string, error) {
 	token, err := RandomHex(24)
 	if err != nil {
-		return database.PasskeyAssignmentLink{}, err
+		return database.PasskeyAssignmentLink{}, "", err
 	}
+	tokenHash := HashToken(token)
 
 	if _, err := database.Connection.RevokeActiveStandardAssignmentLinksForUser(ctx, targetUserID); err != nil {
-		return database.PasskeyAssignmentLink{}, err
+		return database.PasskeyAssignmentLink{}, "", err
 	}
 
 	row, err := database.Connection.CreateAssignmentLink(ctx, database.CreateAssignmentLinkParams{
-		TokenHash:       token,
+		TokenHash:       tokenHash,
 		UserID:          targetUserID,
 		CreatedByUserID: sql.Null[[]byte]{V: createdBy, Valid: createdBy != nil},
 		Purpose:         "standard",
 		ExpiresAt:       sql.NullTime{Time: time.Now().Add(NormalAssignmentLinkLifetime), Valid: true},
 	})
 	if err != nil {
-		return database.PasskeyAssignmentLink{}, err
+		return database.PasskeyAssignmentLink{}, "", err
 	}
 	_ = AuditLog(ctx, &createdBy, "assignment_link_created", "user", IDOrEmpty(targetUserID), map[string]any{"purpose": "standard"})
-	return row, nil
+	return row, token, nil
 }
 
 func AuditLog(ctx context.Context, actorUserID *[]byte, action, targetType, targetID string, metadata interface{}) error {

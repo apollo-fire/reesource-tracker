@@ -54,6 +54,7 @@
                     credential_id: credential.credentialID,
                     public_key: credential.publicKey,
                     transports: credential.transports,
+                    client_data_json: credential.clientDataJSON,
                     label: 'Sign-in passkey',
                 }),
             });

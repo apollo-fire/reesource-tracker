@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 )
@@ -12,6 +13,14 @@ func RandomHex(size int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// HashToken returns the SHA-256 hex digest of the given token. Only the hash
+// is stored in the database; the raw token is returned to the caller once at
+// creation time.
+func HashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func DecodeBase64(s string) ([]byte, error) {

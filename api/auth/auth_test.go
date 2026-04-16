@@ -3,7 +3,14 @@ package auth_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	cryptorand "crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -21,9 +28,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testPrivKey and testPubKeyDER are generated once and reused across all
+// integration tests that need real WebAuthn key material.
+var (
+	testPrivKey   *ecdsa.PrivateKey
+	testPubKeyDER []byte
+)
+
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	middleware.SetCookieSecret([]byte("test-secret-key-for-tests"))
+
+	var err error
+	testPrivKey, err = ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
+	if err != nil {
+		panic("failed to generate test EC key: " + err.Error())
+	}
+	testPubKeyDER, err = x509.MarshalPKIXPublicKey(&testPrivKey.PublicKey)
+	if err != nil {
+		panic("failed to marshal test public key: " + err.Error())
+	}
+
 	os.Exit(m.Run())
 }
 
@@ -470,16 +495,29 @@ func TestFullRegistrationFlow(t *testing.T) {
 	require.NotEmpty(t, challengeToken)
 	require.NotEmpty(t, challengeValue)
 
-	// Step 3: finish registration with synthetic credential material.
+	// Step 3: finish registration with a real key pair and valid clientDataJSON.
 	credentialID := base64.RawURLEncoding.EncodeToString([]byte("integration-test-credential-1"))
-	publicKey := base64.RawURLEncoding.EncodeToString([]byte("integration-test-public-key-material"))
+	publicKeyB64 := base64.RawURLEncoding.EncodeToString(testPubKeyDER)
+
+	// Build a clientDataJSON matching the server's challenge.
+	challengeHexBytes, err := hex.DecodeString(challengeValue)
+	require.NoError(t, err)
+	clientDataMap := map[string]interface{}{
+		"type":      "webauthn.create",
+		"challenge": base64.RawURLEncoding.EncodeToString(challengeHexBytes),
+		"origin":    "http://localhost",
+	}
+	clientDataBytes, _ := json.Marshal(clientDataMap)
+	clientDataJSONB64 := base64.RawURLEncoding.EncodeToString(clientDataBytes)
+
 	body3, _ := json.Marshal(map[string]interface{}{
-		"challenge_token": challengeToken,
-		"challenge":       challengeValue,
-		"credential_id":   credentialID,
-		"public_key":      publicKey,
-		"label":           "Integration Test Passkey",
-		"transports":      []string{"internal"},
+		"challenge_token":  challengeToken,
+		"challenge":        challengeValue,
+		"credential_id":    credentialID,
+		"public_key":       publicKeyB64,
+		"client_data_json": clientDataJSONB64,
+		"label":            "Integration Test Passkey",
+		"transports":       []string{"internal"},
 	})
 	w3 := httptest.NewRecorder()
 	req3, _ := http.NewRequest(http.MethodPost, "/api/auth/register/finish", bytes.NewBuffer(body3))
@@ -524,13 +562,45 @@ func TestFullLoginFlow(t *testing.T) {
 	challengeValue, _ := beginResp["challenge"].(string)
 	require.NotEmpty(t, challengeToken)
 
-	// Step 2: finish login with the credential from TestFullRegistrationFlow.
+	// Step 2: finish login with the credential from TestFullRegistrationFlow,
+	// using a real WebAuthn assertion signed with the test private key.
 	credentialID := base64.RawURLEncoding.EncodeToString([]byte("integration-test-credential-1"))
+
+	// Build clientDataJSON for the login challenge.
+	loginChallengeHexBytes, err := hex.DecodeString(challengeValue)
+	require.NoError(t, err)
+	loginClientDataMap := map[string]interface{}{
+		"type":      "webauthn.get",
+		"challenge": base64.RawURLEncoding.EncodeToString(loginChallengeHexBytes),
+		"origin":    "http://localhost",
+	}
+	loginClientDataBytes, _ := json.Marshal(loginClientDataMap)
+	loginClientDataJSONB64 := base64.RawURLEncoding.EncodeToString(loginClientDataBytes)
+
+	// Build a minimal 37-byte authenticatorData (rpIdHash + flags + counter).
+	rpIdHash := sha256.Sum256([]byte("localhost"))
+	authDataBytes := make([]byte, 37)
+	copy(authDataBytes[0:32], rpIdHash[:])
+	authDataBytes[32] = 0x01 // UP (user present) flag
+	binary.BigEndian.PutUint32(authDataBytes[33:37], 1)
+
+	// Sign: SHA-256(authenticatorData || SHA-256(clientDataJSON)).
+	cdHash := sha256.Sum256(loginClientDataBytes)
+	signedData := make([]byte, len(authDataBytes)+sha256.Size)
+	copy(signedData, authDataBytes)
+	copy(signedData[len(authDataBytes):], cdHash[:])
+	msgHash := sha256.Sum256(signedData)
+	sig, err := ecdsa.SignASN1(cryptorand.Reader, testPrivKey, msgHash[:])
+	require.NoError(t, err)
+
 	body2, _ := json.Marshal(map[string]interface{}{
-		"challenge_token": challengeToken,
-		"challenge":       challengeValue,
-		"credential_id":   credentialID,
-		"sign_counter":    1,
+		"challenge_token":    challengeToken,
+		"challenge":          challengeValue,
+		"credential_id":      credentialID,
+		"sign_counter":       1,
+		"client_data_json":   loginClientDataJSONB64,
+		"authenticator_data": base64.RawURLEncoding.EncodeToString(authDataBytes),
+		"signature":          base64.RawURLEncoding.EncodeToString(sig),
 	})
 	w2 := httptest.NewRecorder()
 	req2, _ := http.NewRequest(http.MethodPost, "/api/auth/login/finish", bytes.NewBuffer(body2))
