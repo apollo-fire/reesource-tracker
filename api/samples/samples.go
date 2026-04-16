@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"math"
 	"net/http"
+	"reesource-tracker/api/middleware"
 	"reesource-tracker/api/samples/sample_mods"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
@@ -130,11 +131,14 @@ func updateSample(c *gin.Context) {
 	RawSampleID := rawID[:]
 
 	type updateSampleRequest struct {
-		LocationID   string `form:"location_id"`
-		ProductID    string `form:"product_id"`
-		OwnerID      string `form:"owner_id"`
-		ProductIssue string `form:"product_issue"`
-		State        string `form:"state"`
+		LocationID    string `form:"location_id"`
+		ProductID     string `form:"product_id"`
+		MaintainOwner string `form:"maintain_owner"`
+		ProductIssue  string `form:"product_issue"`
+		State         string `form:"state"`
+	}
+	if !middleware.EnsureAuthenticated(c) {
+		return
 	}
 	var req updateSampleRequest
 	if err := c.ShouldBind(&req); err != nil {
@@ -152,10 +156,13 @@ func updateSample(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": prodErrMsg})
 		return
 	}
-	ownerBinary, ownerErrMsg, ownerOK := id_helper.MustParseAndMarshalUUID(req.OwnerID)
-	if !ownerOK {
-		c.JSON(http.StatusBadRequest, gin.H{"error": ownerErrMsg})
-		return
+	currentUserID, _ := middleware.CurrentUserID(c)
+	ownerBinary := currentUserID
+	if strings.EqualFold(req.MaintainOwner, "true") || req.MaintainOwner == "1" || strings.EqualFold(req.MaintainOwner, "yes") {
+		existing, err := database.Connection.GetSampleById(c, RawSampleID)
+		if err == nil && existing.OwnerID.Valid {
+			ownerBinary = existing.OwnerID.V
+		}
 	}
 	current_time := time.Now()
 	res, err := database.Connection.UpdateOrCreateSample(c, database.UpdateOrCreateSampleParams{
@@ -272,6 +279,9 @@ func getSamples(c *gin.Context) {
 }
 
 func generateUniqueSamples(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	numSamplesStr := c.Query("num_samples")
 	numSamples, err := strconv.Atoi(numSamplesStr)
 	if err != nil || numSamples <= 0 {

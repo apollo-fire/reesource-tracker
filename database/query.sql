@@ -171,3 +171,253 @@ SET
 DELETE FROM users
 WHERE
     id = $1;
+
+-- name: AnyAdminExists :one
+SELECT EXISTS(
+        SELECT 1
+        FROM user_roles
+        WHERE role = 'admin'
+);
+
+-- name: CountAdmins :one
+SELECT COUNT(*)
+FROM user_roles
+WHERE role = 'admin';
+
+-- name: HasRole :one
+SELECT EXISTS(
+        SELECT 1
+        FROM user_roles
+        WHERE user_id = $1
+            AND role = $2
+);
+
+-- name: ListUserRoles :many
+SELECT role
+FROM user_roles
+WHERE user_id = $1
+ORDER BY role;
+
+-- name: SetUserRole :exec
+INSERT INTO user_roles (user_id, role)
+VALUES ($1, $2)
+ON CONFLICT (user_id, role) DO NOTHING;
+
+-- name: RemoveUserRole :exec
+DELETE FROM user_roles
+WHERE user_id = $1
+    AND role = $2;
+
+-- name: ListUsersWithoutAdmin :many
+SELECT users.id, users.name
+FROM users
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM user_roles
+        WHERE user_roles.user_id = users.id
+            AND user_roles.role = 'admin'
+)
+ORDER BY users.name;
+
+-- name: UpsertUserName :exec
+INSERT INTO users (id, name)
+VALUES ($1, $2)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name;
+
+-- name: InsertPasskey :exec
+INSERT INTO passkeys (
+        credential_id,
+        user_id,
+        public_key,
+        sign_counter,
+        transports,
+        label,
+        revoked_at
+)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6, NULL)
+ON CONFLICT (credential_id) DO UPDATE
+SET user_id = EXCLUDED.user_id,
+        public_key = EXCLUDED.public_key,
+        sign_counter = EXCLUDED.sign_counter,
+        transports = EXCLUDED.transports,
+        label = EXCLUDED.label,
+        revoked_at = NULL;
+
+-- name: ListPasskeysByUser :many
+SELECT id, credential_id, user_id, public_key, sign_counter, transports, label, created_at, revoked_at
+FROM passkeys
+WHERE user_id = $1
+ORDER BY created_at DESC;
+
+-- name: GetPasskeyByCredentialID :one
+SELECT id, credential_id, user_id, public_key, sign_counter, transports, label, created_at, revoked_at
+FROM passkeys
+WHERE credential_id = $1;
+
+-- name: RevokePasskey :exec
+UPDATE passkeys
+SET revoked_at = NOW()
+WHERE credential_id = $1
+    AND revoked_at IS NULL;
+
+-- name: RevokeAllPasskeysForUser :exec
+UPDATE passkeys
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND revoked_at IS NULL;
+
+-- name: UpdatePasskeySignCounter :exec
+UPDATE passkeys
+SET sign_counter = $2
+WHERE credential_id = $1;
+
+-- name: CreateAssignmentLink :one
+INSERT INTO passkey_assignment_links (
+        token_hash,
+        user_id,
+        created_by_user_id,
+        purpose,
+        expires_at
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at;
+
+-- name: GetActiveAssignmentLinkByTokenHash :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE token_hash = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+LIMIT 1;
+
+-- name: GetAssignmentLinkByID :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE id = $1;
+
+-- name: RevokeAssignmentLink :exec
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE id = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL;
+
+-- name: GetActiveStandardAssignmentLinkByUserID :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE user_id = $1
+    AND purpose = 'standard'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- name: RevokeActiveStandardAssignmentLinksForUser :execrows
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND purpose = 'standard'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW());
+
+-- name: ConsumeAssignmentLink :exec
+UPDATE passkey_assignment_links
+SET consumed_at = NOW()
+WHERE id = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL;
+
+-- name: GetOrCreateBootstrapLink :one
+WITH active_bootstrap AS (
+        SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+        FROM passkey_assignment_links
+        WHERE purpose = 'bootstrap'
+            AND consumed_at IS NULL
+            AND revoked_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1
+), inserted AS (
+        INSERT INTO passkey_assignment_links (token_hash, user_id, created_by_user_id, purpose, expires_at)
+        SELECT $1, $2, NULL, 'bootstrap', NULL
+        WHERE NOT EXISTS (SELECT 1 FROM active_bootstrap)
+        RETURNING id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+)
+SELECT * FROM active_bootstrap
+UNION ALL
+SELECT * FROM inserted
+LIMIT 1;
+
+-- name: GetActiveBootstrapLink :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE purpose = 'bootstrap'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- name: RevokeActiveBootstrapLinks :exec
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE purpose = 'bootstrap'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL;
+
+-- name: InsertAuthChallenge :exec
+INSERT INTO auth_challenges (
+        challenge_token,
+        challenge_bytes,
+        user_id,
+        flow_type,
+        expires_at,
+        used_at
+)
+VALUES ($1, $2, $3, $4, $5, NULL)
+ON CONFLICT (challenge_token) DO UPDATE
+SET challenge_bytes = EXCLUDED.challenge_bytes,
+        user_id = EXCLUDED.user_id,
+        flow_type = EXCLUDED.flow_type,
+        expires_at = EXCLUDED.expires_at,
+        used_at = NULL;
+
+-- name: GetActiveAuthChallenge :one
+SELECT challenge_token, challenge_bytes, user_id, flow_type, expires_at, used_at, created_at
+FROM auth_challenges
+WHERE challenge_token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW();
+
+-- name: MarkAuthChallengeUsed :exec
+UPDATE auth_challenges
+SET used_at = NOW()
+WHERE challenge_token = $1
+    AND used_at IS NULL;
+
+-- name: DeleteExpiredAuthChallenges :exec
+DELETE FROM auth_challenges
+WHERE expires_at <= NOW();
+
+-- name: InsertAuditLog :exec
+INSERT INTO audit_logs (actor_user_id, action, target_type, target_id, metadata)
+VALUES ($1, $2, $3, $4, $5::jsonb);
+
+-- name: ListAuditLogs :many
+SELECT id, actor_user_id, action, target_type, target_id, metadata, created_at
+FROM audit_logs
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: DeleteAuditLogsOlderThan :exec
+DELETE FROM audit_logs
+WHERE created_at < $1;
+
+-- name: ClearAllAdminRoles :exec
+DELETE FROM user_roles
+WHERE role = 'admin';
+
+-- name: EnableAdminRemovalOverride :exec
+SELECT set_config('app.allow_remove_last_admin', 'on', true);

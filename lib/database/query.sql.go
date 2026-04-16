@@ -8,6 +8,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -32,6 +33,120 @@ func (q *Queries) AddSampleMod(ctx context.Context, arg AddSampleModParams) erro
 		arg.Name,
 		arg.TimeAdded,
 	)
+	return err
+}
+
+const anyAdminExists = `-- name: AnyAdminExists :one
+SELECT EXISTS(
+        SELECT 1
+        FROM user_roles
+        WHERE role = 'admin'
+)
+`
+
+func (q *Queries) AnyAdminExists(ctx context.Context) (bool, error) {
+	row := q.db.QueryRowContext(ctx, anyAdminExists)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const clearAllAdminRoles = `-- name: ClearAllAdminRoles :exec
+DELETE FROM user_roles
+WHERE role = 'admin'
+`
+
+func (q *Queries) ClearAllAdminRoles(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, clearAllAdminRoles)
+	return err
+}
+
+const consumeAssignmentLink = `-- name: ConsumeAssignmentLink :exec
+UPDATE passkey_assignment_links
+SET consumed_at = NOW()
+WHERE id = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+`
+
+func (q *Queries) ConsumeAssignmentLink(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, consumeAssignmentLink, id)
+	return err
+}
+
+const countAdmins = `-- name: CountAdmins :one
+SELECT COUNT(*)
+FROM user_roles
+WHERE role = 'admin'
+`
+
+func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createAssignmentLink = `-- name: CreateAssignmentLink :one
+INSERT INTO passkey_assignment_links (
+        token_hash,
+        user_id,
+        created_by_user_id,
+        purpose,
+        expires_at
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+`
+
+type CreateAssignmentLinkParams struct {
+	TokenHash       string
+	UserID          []byte
+	CreatedByUserID sql.Null[[]byte]
+	Purpose         string
+	ExpiresAt       sql.NullTime
+}
+
+func (q *Queries) CreateAssignmentLink(ctx context.Context, arg CreateAssignmentLinkParams) (PasskeyAssignmentLink, error) {
+	row := q.db.QueryRowContext(ctx, createAssignmentLink,
+		arg.TokenHash,
+		arg.UserID,
+		arg.CreatedByUserID,
+		arg.Purpose,
+		arg.ExpiresAt,
+	)
+	var i PasskeyAssignmentLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const deleteAuditLogsOlderThan = `-- name: DeleteAuditLogsOlderThan :exec
+DELETE FROM audit_logs
+WHERE created_at < $1
+`
+
+func (q *Queries) DeleteAuditLogsOlderThan(ctx context.Context, createdAt time.Time) error {
+	_, err := q.db.ExecContext(ctx, deleteAuditLogsOlderThan, createdAt)
+	return err
+}
+
+const deleteExpiredAuthChallenges = `-- name: DeleteExpiredAuthChallenges :exec
+DELETE FROM auth_challenges
+WHERE expires_at <= NOW()
+`
+
+func (q *Queries) DeleteExpiredAuthChallenges(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredAuthChallenges)
 	return err
 }
 
@@ -66,6 +181,144 @@ WHERE
 func (q *Queries) DeleteUserByID(ctx context.Context, id []byte) error {
 	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
 	return err
+}
+
+const enableAdminRemovalOverride = `-- name: EnableAdminRemovalOverride :exec
+SELECT set_config('app.allow_remove_last_admin', 'on', true)
+`
+
+func (q *Queries) EnableAdminRemovalOverride(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, enableAdminRemovalOverride)
+	return err
+}
+
+const getActiveAssignmentLinkByTokenHash = `-- name: GetActiveAssignmentLinkByTokenHash :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE token_hash = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+LIMIT 1
+`
+
+func (q *Queries) GetActiveAssignmentLinkByTokenHash(ctx context.Context, tokenHash string) (PasskeyAssignmentLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveAssignmentLinkByTokenHash, tokenHash)
+	var i PasskeyAssignmentLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getActiveAuthChallenge = `-- name: GetActiveAuthChallenge :one
+SELECT challenge_token, challenge_bytes, user_id, flow_type, expires_at, used_at, created_at
+FROM auth_challenges
+WHERE challenge_token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
+`
+
+func (q *Queries) GetActiveAuthChallenge(ctx context.Context, challengeToken string) (AuthChallenge, error) {
+	row := q.db.QueryRowContext(ctx, getActiveAuthChallenge, challengeToken)
+	var i AuthChallenge
+	err := row.Scan(
+		&i.ChallengeToken,
+		&i.ChallengeBytes,
+		&i.UserID,
+		&i.FlowType,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getActiveBootstrapLink = `-- name: GetActiveBootstrapLink :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE purpose = 'bootstrap'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetActiveBootstrapLink(ctx context.Context) (PasskeyAssignmentLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveBootstrapLink)
+	var i PasskeyAssignmentLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getActiveStandardAssignmentLinkByUserID = `-- name: GetActiveStandardAssignmentLinkByUserID :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE user_id = $1
+    AND purpose = 'standard'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetActiveStandardAssignmentLinkByUserID(ctx context.Context, userID []byte) (PasskeyAssignmentLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveStandardAssignmentLinkByUserID, userID)
+	var i PasskeyAssignmentLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getAssignmentLinkByID = `-- name: GetAssignmentLinkByID :one
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+FROM passkey_assignment_links
+WHERE id = $1
+`
+
+func (q *Queries) GetAssignmentLinkByID(ctx context.Context, id int64) (PasskeyAssignmentLink, error) {
+	row := q.db.QueryRowContext(ctx, getAssignmentLinkByID, id)
+	var i PasskeyAssignmentLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
 }
 
 const getLocation = `-- name: GetLocation :one
@@ -122,6 +375,84 @@ func (q *Queries) GetLocations(ctx context.Context) ([]Location, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getOrCreateBootstrapLink = `-- name: GetOrCreateBootstrapLink :one
+WITH active_bootstrap AS (
+        SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+        FROM passkey_assignment_links
+        WHERE purpose = 'bootstrap'
+            AND consumed_at IS NULL
+            AND revoked_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1
+), inserted AS (
+        INSERT INTO passkey_assignment_links (token_hash, user_id, created_by_user_id, purpose, expires_at)
+        SELECT $1, $2, NULL, 'bootstrap', NULL
+        WHERE NOT EXISTS (SELECT 1 FROM active_bootstrap)
+        RETURNING id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
+)
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at FROM active_bootstrap
+UNION ALL
+SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at FROM inserted
+LIMIT 1
+`
+
+type GetOrCreateBootstrapLinkParams struct {
+	TokenHash string
+	UserID    []byte
+}
+
+type GetOrCreateBootstrapLinkRow struct {
+	ID              int64
+	TokenHash       string
+	UserID          []byte
+	CreatedByUserID sql.Null[[]byte]
+	Purpose         string
+	CreatedAt       time.Time
+	ExpiresAt       sql.NullTime
+	ConsumedAt      sql.NullTime
+	RevokedAt       sql.NullTime
+}
+
+func (q *Queries) GetOrCreateBootstrapLink(ctx context.Context, arg GetOrCreateBootstrapLinkParams) (GetOrCreateBootstrapLinkRow, error) {
+	row := q.db.QueryRowContext(ctx, getOrCreateBootstrapLink, arg.TokenHash, arg.UserID)
+	var i GetOrCreateBootstrapLinkRow
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedByUserID,
+		&i.Purpose,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getPasskeyByCredentialID = `-- name: GetPasskeyByCredentialID :one
+SELECT id, credential_id, user_id, public_key, sign_counter, transports, label, created_at, revoked_at
+FROM passkeys
+WHERE credential_id = $1
+`
+
+func (q *Queries) GetPasskeyByCredentialID(ctx context.Context, credentialID []byte) (Passkey, error) {
+	row := q.db.QueryRowContext(ctx, getPasskeyByCredentialID, credentialID)
+	var i Passkey
+	err := row.Scan(
+		&i.ID,
+		&i.CredentialID,
+		&i.UserID,
+		&i.PublicKey,
+		&i.SignCounter,
+		&i.Transports,
+		&i.Label,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
@@ -239,6 +570,212 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const hasRole = `-- name: HasRole :one
+SELECT EXISTS(
+        SELECT 1
+        FROM user_roles
+        WHERE user_id = $1
+            AND role = $2
+)
+`
+
+type HasRoleParams struct {
+	UserID []byte
+	Role   string
+}
+
+func (q *Queries) HasRole(ctx context.Context, arg HasRoleParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, hasRole, arg.UserID, arg.Role)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const insertAuditLog = `-- name: InsertAuditLog :exec
+INSERT INTO audit_logs (actor_user_id, action, target_type, target_id, metadata)
+VALUES ($1, $2, $3, $4, $5::jsonb)
+`
+
+type InsertAuditLogParams struct {
+	ActorUserID sql.Null[[]byte]
+	Action      string
+	TargetType  string
+	TargetID    sql.NullString
+	Column5     json.RawMessage
+}
+
+func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
+	_, err := q.db.ExecContext(ctx, insertAuditLog,
+		arg.ActorUserID,
+		arg.Action,
+		arg.TargetType,
+		arg.TargetID,
+		arg.Column5,
+	)
+	return err
+}
+
+const insertAuthChallenge = `-- name: InsertAuthChallenge :exec
+INSERT INTO auth_challenges (
+        challenge_token,
+        challenge_bytes,
+        user_id,
+        flow_type,
+        expires_at,
+        used_at
+)
+VALUES ($1, $2, $3, $4, $5, NULL)
+ON CONFLICT (challenge_token) DO UPDATE
+SET challenge_bytes = EXCLUDED.challenge_bytes,
+        user_id = EXCLUDED.user_id,
+        flow_type = EXCLUDED.flow_type,
+        expires_at = EXCLUDED.expires_at,
+        used_at = NULL
+`
+
+type InsertAuthChallengeParams struct {
+	ChallengeToken string
+	ChallengeBytes []byte
+	UserID         sql.Null[[]byte]
+	FlowType       string
+	ExpiresAt      time.Time
+}
+
+func (q *Queries) InsertAuthChallenge(ctx context.Context, arg InsertAuthChallengeParams) error {
+	_, err := q.db.ExecContext(ctx, insertAuthChallenge,
+		arg.ChallengeToken,
+		arg.ChallengeBytes,
+		arg.UserID,
+		arg.FlowType,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const insertPasskey = `-- name: InsertPasskey :exec
+INSERT INTO passkeys (
+        credential_id,
+        user_id,
+        public_key,
+        sign_counter,
+        transports,
+        label,
+        revoked_at
+)
+VALUES ($1, $2, $3, $4, $5::jsonb, $6, NULL)
+ON CONFLICT (credential_id) DO UPDATE
+SET user_id = EXCLUDED.user_id,
+        public_key = EXCLUDED.public_key,
+        sign_counter = EXCLUDED.sign_counter,
+        transports = EXCLUDED.transports,
+        label = EXCLUDED.label,
+        revoked_at = NULL
+`
+
+type InsertPasskeyParams struct {
+	CredentialID []byte
+	UserID       []byte
+	PublicKey    []byte
+	SignCounter  int64
+	Column5      json.RawMessage
+	Label        sql.NullString
+}
+
+func (q *Queries) InsertPasskey(ctx context.Context, arg InsertPasskeyParams) error {
+	_, err := q.db.ExecContext(ctx, insertPasskey,
+		arg.CredentialID,
+		arg.UserID,
+		arg.PublicKey,
+		arg.SignCounter,
+		arg.Column5,
+		arg.Label,
+	)
+	return err
+}
+
+const listAuditLogs = `-- name: ListAuditLogs :many
+SELECT id, actor_user_id, action, target_type, target_id, metadata, created_at
+FROM audit_logs
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAuditLogsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditLogs, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditLog
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPasskeysByUser = `-- name: ListPasskeysByUser :many
+SELECT id, credential_id, user_id, public_key, sign_counter, transports, label, created_at, revoked_at
+FROM passkeys
+WHERE user_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListPasskeysByUser(ctx context.Context, userID []byte) ([]Passkey, error) {
+	rows, err := q.db.QueryContext(ctx, listPasskeysByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Passkey
+	for rows.Next() {
+		var i Passkey
+		if err := rows.Scan(
+			&i.ID,
+			&i.CredentialID,
+			&i.UserID,
+			&i.PublicKey,
+			&i.SignCounter,
+			&i.Transports,
+			&i.Label,
+			&i.CreatedAt,
+			&i.RevokedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -399,6 +936,83 @@ func (q *Queries) ListSamples(ctx context.Context) ([]ListSamplesRow, error) {
 	return items, nil
 }
 
+const listUserRoles = `-- name: ListUserRoles :many
+SELECT role
+FROM user_roles
+WHERE user_id = $1
+ORDER BY role
+`
+
+func (q *Queries) ListUserRoles(ctx context.Context, userID []byte) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUserRoles, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			return nil, err
+		}
+		items = append(items, role)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithoutAdmin = `-- name: ListUsersWithoutAdmin :many
+SELECT users.id, users.name
+FROM users
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM user_roles
+        WHERE user_roles.user_id = users.id
+            AND user_roles.role = 'admin'
+)
+ORDER BY users.name
+`
+
+func (q *Queries) ListUsersWithoutAdmin(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithoutAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markAuthChallengeUsed = `-- name: MarkAuthChallengeUsed :exec
+UPDATE auth_challenges
+SET used_at = NOW()
+WHERE challenge_token = $1
+    AND used_at IS NULL
+`
+
+func (q *Queries) MarkAuthChallengeUsed(ctx context.Context, challengeToken string) error {
+	_, err := q.db.ExecContext(ctx, markAuthChallengeUsed, challengeToken)
+	return err
+}
+
 const removeSampleMod = `-- name: RemoveSampleMod :exec
 UPDATE sample_mods
 SET
@@ -414,6 +1028,106 @@ type RemoveSampleModParams struct {
 
 func (q *Queries) RemoveSampleMod(ctx context.Context, arg RemoveSampleModParams) error {
 	_, err := q.db.ExecContext(ctx, removeSampleMod, arg.TimeRemoved, arg.ID)
+	return err
+}
+
+const removeUserRole = `-- name: RemoveUserRole :exec
+DELETE FROM user_roles
+WHERE user_id = $1
+    AND role = $2
+`
+
+type RemoveUserRoleParams struct {
+	UserID []byte
+	Role   string
+}
+
+func (q *Queries) RemoveUserRole(ctx context.Context, arg RemoveUserRoleParams) error {
+	_, err := q.db.ExecContext(ctx, removeUserRole, arg.UserID, arg.Role)
+	return err
+}
+
+const revokeActiveBootstrapLinks = `-- name: RevokeActiveBootstrapLinks :exec
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE purpose = 'bootstrap'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeActiveBootstrapLinks(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, revokeActiveBootstrapLinks)
+	return err
+}
+
+const revokeActiveStandardAssignmentLinksForUser = `-- name: RevokeActiveStandardAssignmentLinksForUser :execrows
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND purpose = 'standard'
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > NOW())
+`
+
+func (q *Queries) RevokeActiveStandardAssignmentLinksForUser(ctx context.Context, userID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeActiveStandardAssignmentLinksForUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAllPasskeysForUser = `-- name: RevokeAllPasskeysForUser :exec
+UPDATE passkeys
+SET revoked_at = NOW()
+WHERE user_id = $1
+    AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeAllPasskeysForUser(ctx context.Context, userID []byte) error {
+	_, err := q.db.ExecContext(ctx, revokeAllPasskeysForUser, userID)
+	return err
+}
+
+const revokeAssignmentLink = `-- name: RevokeAssignmentLink :exec
+UPDATE passkey_assignment_links
+SET revoked_at = NOW()
+WHERE id = $1
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeAssignmentLink(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, revokeAssignmentLink, id)
+	return err
+}
+
+const revokePasskey = `-- name: RevokePasskey :exec
+UPDATE passkeys
+SET revoked_at = NOW()
+WHERE credential_id = $1
+    AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokePasskey(ctx context.Context, credentialID []byte) error {
+	_, err := q.db.ExecContext(ctx, revokePasskey, credentialID)
+	return err
+}
+
+const setUserRole = `-- name: SetUserRole :exec
+INSERT INTO user_roles (user_id, role)
+VALUES ($1, $2)
+ON CONFLICT (user_id, role) DO NOTHING
+`
+
+type SetUserRoleParams struct {
+	UserID []byte
+	Role   string
+}
+
+func (q *Queries) SetUserRole(ctx context.Context, arg SetUserRoleParams) error {
+	_, err := q.db.ExecContext(ctx, setUserRole, arg.UserID, arg.Role)
 	return err
 }
 
@@ -475,6 +1189,22 @@ func (q *Queries) UpdateOrCreateSample(ctx context.Context, arg UpdateOrCreateSa
 		&i.ProductIssue,
 	)
 	return i, err
+}
+
+const updatePasskeySignCounter = `-- name: UpdatePasskeySignCounter :exec
+UPDATE passkeys
+SET sign_counter = $2
+WHERE credential_id = $1
+`
+
+type UpdatePasskeySignCounterParams struct {
+	CredentialID []byte
+	SignCounter  int64
+}
+
+func (q *Queries) UpdatePasskeySignCounter(ctx context.Context, arg UpdatePasskeySignCounterParams) error {
+	_, err := q.db.ExecContext(ctx, updatePasskeySignCounter, arg.CredentialID, arg.SignCounter)
+	return err
 }
 
 const upsertLocation = `-- name: UpsertLocation :exec
@@ -552,5 +1282,22 @@ type UpsertUserParams struct {
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 	_, err := q.db.ExecContext(ctx, upsertUser, arg.ID, arg.Name)
+	return err
+}
+
+const upsertUserName = `-- name: UpsertUserName :exec
+INSERT INTO users (id, name)
+VALUES ($1, $2)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name
+`
+
+type UpsertUserNameParams struct {
+	ID   []byte
+	Name string
+}
+
+func (q *Queries) UpsertUserName(ctx context.Context, arg UpsertUserNameParams) error {
+	_, err := q.db.ExecContext(ctx, upsertUserName, arg.ID, arg.Name)
 	return err
 }

@@ -27,6 +27,7 @@
     let add_mod_error = $state('');
     let product_issue = $state('');
     let owner_id = $state('');
+    let maintain_owner = $state(false);
 
     AppStore.subscribe((state) => {
         const this_sample_new = state.samples.find((s) => s.id === sample.id);
@@ -106,7 +107,7 @@
         form.append('location_id', location_id);
         form.append('product_id', product_id);
         form.append('state', sample_state);
-        form.append('owner_id', owner_id);
+        form.append('maintain_owner', maintain_owner ? 'true' : 'false');
         form.append('product_issue', product_issue);
         const res = await fetch(`/api/sample/${sample_id}`, {
             method: 'POST',
@@ -171,11 +172,20 @@
                             id="state-select" />
                     </div>
                     <div>
-                        <Label for="owner-select" class="mb-2">Owner</Label>
+                        <Label for="owner-select" class="mb-2"
+                            >Current Owner</Label>
                         <UserSelect
                             bind:bindValue={owner_id}
-                            placeholder="Select owner"
-                            id="owner-select" />
+                            placeholder="No owner assigned"
+                            id="owner-select"
+                            disabled />
+                        <div class="mt-3 flex items-center gap-2">
+                            <Checkbox
+                                bind:checked={maintain_owner}
+                                id="maintain-owner" />
+                            <Label for="maintain-owner"
+                                >Maintain current owner on save</Label>
+                        </div>
                     </div>
                 </div>
             </Card.Content>

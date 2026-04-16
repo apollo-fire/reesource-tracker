@@ -3,6 +3,7 @@ package locations
 import (
 	"database/sql"
 	"net/http"
+	"reesource-tracker/api/middleware"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	id_helper "reesource-tracker/lib/id_helper"
@@ -27,6 +28,9 @@ func Routes(route *gin.RouterGroup) {
 }
 
 func deleteLocation(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") || !middleware.EnsureConfirmed(c) {
+		return
+	}
 	locationID := c.Param("location_id")
 	if locationID == "" {
 		c.JSON(400, gin.H{"error": "id required"})
@@ -47,6 +51,9 @@ func deleteLocation(c *gin.Context) {
 }
 
 func createLocation(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -124,6 +131,9 @@ func getLocation(c *gin.Context) {
 }
 
 func updateLocation(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	var req struct {
 		Name             string `json:"name"`
 		Description      string `json:"description"`
