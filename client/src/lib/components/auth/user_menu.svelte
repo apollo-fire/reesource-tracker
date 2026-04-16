@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
     import { UserCog } from 'lucide-svelte';
+    import { createEventDispatcher } from 'svelte';
 
     import { Button } from '$lib/components/ui/button';
     import * as DropdownMenu from '$lib/components/ui/dropdown-menu';

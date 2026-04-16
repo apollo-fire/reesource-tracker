@@ -4,10 +4,10 @@
     import { AppStore, UpdateAppStore } from '$lib/components/app_store';
     import UserMenu from '$lib/components/auth/user_menu.svelte';
     import { Base64UUIDToString } from '$lib/components/id_helper';
-    import ManageRegistrationsDialog from '$lib/components/user/manage_registrations_dialog.svelte';
     import { Button } from '$lib/components/ui/button';
     import { Toaster } from '$lib/components/ui/sonner/index.js';
     import * as Tabs from '$lib/components/ui/tabs';
+    import ManageRegistrationsDialog from '$lib/components/user/manage_registrations_dialog.svelte';
 
     import BootstrapSetup from '$views/bootstrap_setup.svelte';
     import BulkApply from '$views/bulk_apply.svelte';
@@ -178,8 +178,8 @@
         <div class="flex items-center justify-between gap-3 mb-4">
             <div class="text-sm text-muted-foreground">Quick Actions</div>
             <UserMenu
-                {userDisplayName}
-                {userRolesDisplay}
+                userDisplayName={userDisplayName}
+                userRolesDisplay={userRolesDisplay}
                 showManageRegistrations={true}
                 on:manageRegistrations={() =>
                     (manageSelfRegistrationsOpen = true)}
@@ -252,8 +252,8 @@
                 </Tabs.List>
                 <div class="ml-auto flex-shrink-0">
                     <UserMenu
-                        {userDisplayName}
-                        {userRolesDisplay}
+                        userDisplayName={userDisplayName}
+                        userRolesDisplay={userRolesDisplay}
                         showManageRegistrations={true}
                         on:manageRegistrations={() =>
                             (manageSelfRegistrationsOpen = true)}

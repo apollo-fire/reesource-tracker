@@ -4,16 +4,15 @@
     import { SvelteMap } from 'svelte/reactivity';
 
     import {
+        ROLE_OPTIONS,
         canManageRegistrations as canManageRegistrationsForUser,
         formatRoleLabel,
         getPrimaryRole,
         isUserRole,
-        ROLE_OPTIONS,
     } from '$lib/auth/user_management';
     import { AppStore, UpdateUsers } from '$lib/components/app_store';
     import { Base64UUIDToString } from '$lib/components/id_helper';
     import { SampleState } from '$lib/components/sample';
-    import ManageRegistrationsDialog from '$lib/components/user/manage_registrations_dialog.svelte';
     import * as AlertDialog from '$lib/components/ui/alert-dialog';
     import { Button } from '$lib/components/ui/button';
     import * as Card from '$lib/components/ui/card';
@@ -28,6 +27,7 @@
         TableRow,
     } from '$lib/components/ui/table';
     import type { User } from '$lib/components/user';
+    import ManageRegistrationsDialog from '$lib/components/user/manage_registrations_dialog.svelte';
 
     let isAdmin = $state(false);
     let currentUserId = $state('');
