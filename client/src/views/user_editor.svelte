@@ -8,7 +8,6 @@
         canManageRegistrations as canManageRegistrationsForUser,
         formatRoleLabel,
         getPrimaryRole,
-        isUserRole,
     } from '$lib/auth/user_management';
     import { AppStore, UpdateUsers } from '$lib/components/app_store';
     import { Base64UUIDToString } from '$lib/components/id_helper';
