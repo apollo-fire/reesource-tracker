@@ -142,8 +142,12 @@ export async function getPasskeyAssertion(
     return {
         credentialID: bytesToBase64Url(new Uint8Array(result.rawId)),
         signCounter: parseSignCounter(response.authenticatorData),
-        clientDataJSON: bytesToBase64Url(new Uint8Array(response.clientDataJSON)),
-        authenticatorData: bytesToBase64Url(new Uint8Array(response.authenticatorData)),
+        clientDataJSON: bytesToBase64Url(
+            new Uint8Array(response.clientDataJSON),
+        ),
+        authenticatorData: bytesToBase64Url(
+            new Uint8Array(response.authenticatorData),
+        ),
         signature: bytesToBase64Url(new Uint8Array(response.signature)),
         userHandle: response.userHandle
             ? bytesToBase64Url(new Uint8Array(response.userHandle))
