@@ -44,10 +44,10 @@ func main() {
 			return
 		}
 		r.GET("/app/*path", func(c *gin.Context) {
-			path := c.Param("path")
+			path := strings.TrimPrefix(c.Param("path"), "/")
 			// Check if the first segment is "assets"
-			segments := strings.SplitN(path, "/", 3)
-			if len(segments) > 1 && segments[1] == "assets" {
+			segments := strings.SplitN(path, "/", 2)
+			if len(segments) > 0 && segments[0] == "assets" {
 				absPath, err := filepath.Abs(filepath.Join(safePath, path))
 				if err != nil {
 					c.AbortWithStatus(http.StatusInternalServerError)
