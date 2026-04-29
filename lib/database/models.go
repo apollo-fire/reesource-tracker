@@ -6,6 +6,7 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -17,11 +18,55 @@ type AppliedTag struct {
 	DateRemoved sql.NullTime
 }
 
+type AuditLog struct {
+	ID          int64
+	ActorUserID sql.Null[[]byte]
+	Action      string
+	TargetType  string
+	TargetID    sql.NullString
+	Metadata    json.RawMessage
+	CreatedAt   time.Time
+}
+
+type AuthChallenge struct {
+	ChallengeToken string
+	ChallengeBytes []byte
+	UserID         sql.Null[[]byte]
+	FlowType       string
+	ExpiresAt      time.Time
+	UsedAt         sql.NullTime
+	CreatedAt      time.Time
+}
+
 type Location struct {
 	ID               []byte
 	Name             string
 	Description      sql.NullString
 	ParentLocationID sql.Null[[]byte]
+}
+
+type Passkey struct {
+	ID           int64
+	CredentialID []byte
+	UserID       []byte
+	PublicKey    []byte
+	SignCounter  int64
+	Transports   json.RawMessage
+	Label        sql.NullString
+	CreatedAt    time.Time
+	RevokedAt    sql.NullTime
+}
+
+type PasskeyAssignmentLink struct {
+	ID              int64
+	TokenHash       string
+	UserID          []byte
+	CreatedByUserID sql.Null[[]byte]
+	Purpose         string
+	CreatedAt       time.Time
+	ExpiresAt       sql.NullTime
+	ConsumedAt      sql.NullTime
+	RevokedAt       sql.NullTime
 }
 
 type Product struct {
@@ -73,4 +118,10 @@ type Tag struct {
 type User struct {
 	ID   []byte
 	Name string
+}
+
+type UserRole struct {
+	UserID    []byte
+	Role      string
+	CreatedAt time.Time
 }
