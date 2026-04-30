@@ -1,12 +1,12 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { toast } from 'svelte-sonner';
 
     import { AppStore, UpdateAppStore } from '$lib/components/app_store';
     import UserMenu from '$lib/components/auth/user_menu.svelte';
     import { Base64UUIDToString } from '$lib/components/id_helper';
     import { Button } from '$lib/components/ui/button';
     import { Toaster } from '$lib/components/ui/sonner/index.js';
-    import { toast } from 'svelte-sonner';
     import * as Tabs from '$lib/components/ui/tabs';
     import ManageRegistrationsDialog from '$lib/components/user/manage_registrations_dialog.svelte';
 

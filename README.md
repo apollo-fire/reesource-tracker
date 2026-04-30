@@ -231,6 +231,7 @@ The default method. A user account is created via an **assignment link** — a s
 Enabled by setting `MAGIC_LINK_WEBHOOK_URL`. When a user requests a sign-in link, the server dispatches a `POST` to the webhook with the login URL; no email server is required — use any HTTP endpoint (e.g. a transactional email provider's API or an automation webhook).
 
 Flow:
+
 1. `POST /api/auth/email/login/request` — client submits `{"email": "..."}`. Always returns `200`; does not reveal whether the address is registered.
 2. The webhook receives `{"email", "name", "login_url"}` and sends the link to the user.
 3. User clicks the link; the frontend extracts `?magic_token=` from the URL and calls `POST /api/auth/email/login/consume` with `{"token": "..."}` to establish a session.
@@ -245,26 +246,26 @@ An assignment link can also be used to register an email address instead of a pa
 
 ### Auth API reference
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/auth/session` | — | Current session info |
-| `POST` | `/api/auth/logout` | — | Clear session cookie |
-| `GET` | `/api/auth/features` | — | Feature flags (e.g. `magic_links_enabled`) |
-| `POST` | `/api/auth/register/begin` | — | Begin passkey registration (requires assignment token) |
-| `POST` | `/api/auth/register/finish` | — | Complete passkey registration |
-| `POST` | `/api/auth/login/begin` | — | Begin passkey login |
-| `POST` | `/api/auth/login/finish` | — | Complete passkey login |
-| `POST` | `/api/auth/email/register` | — | Register email via assignment link |
-| `POST` | `/api/auth/email/login/request` | — | Request magic link |
-| `POST` | `/api/auth/email/login/consume` | — | Consume magic link token, establish session |
-| `GET` | `/api/auth/self/assignment-link` | ✓ | Get current user's active assignment link |
-| `POST` | `/api/auth/self/assignment-link` | ✓ | Create assignment link for current user |
-| `DELETE` | `/api/auth/self/assignment-link` | ✓ | Revoke current user's assignment link |
-| `GET` | `/api/auth/self/passkeys` | ✓ | List current user's passkeys |
-| `POST` | `/api/auth/self/passkeys/:credential_id/revoke` | ✓ | Revoke a passkey |
-| `GET` | `/api/auth/self/emails` | ✓ | List current user's registered emails |
-| `POST` | `/api/auth/self/emails` | ✓ | Add an email |
-| `POST` | `/api/auth/self/emails/:id/remove` | ✓ | Remove an email |
+| Method   | Path                                            | Auth | Description                                            |
+| -------- | ----------------------------------------------- | ---- | ------------------------------------------------------ |
+| `GET`    | `/api/auth/session`                             | —    | Current session info                                   |
+| `POST`   | `/api/auth/logout`                              | —    | Clear session cookie                                   |
+| `GET`    | `/api/auth/features`                            | —    | Feature flags (e.g. `magic_links_enabled`)             |
+| `POST`   | `/api/auth/register/begin`                      | —    | Begin passkey registration (requires assignment token) |
+| `POST`   | `/api/auth/register/finish`                     | —    | Complete passkey registration                          |
+| `POST`   | `/api/auth/login/begin`                         | —    | Begin passkey login                                    |
+| `POST`   | `/api/auth/login/finish`                        | —    | Complete passkey login                                 |
+| `POST`   | `/api/auth/email/register`                      | —    | Register email via assignment link                     |
+| `POST`   | `/api/auth/email/login/request`                 | —    | Request magic link                                     |
+| `POST`   | `/api/auth/email/login/consume`                 | —    | Consume magic link token, establish session            |
+| `GET`    | `/api/auth/self/assignment-link`                | ✓    | Get current user's active assignment link              |
+| `POST`   | `/api/auth/self/assignment-link`                | ✓    | Create assignment link for current user                |
+| `DELETE` | `/api/auth/self/assignment-link`                | ✓    | Revoke current user's assignment link                  |
+| `GET`    | `/api/auth/self/passkeys`                       | ✓    | List current user's passkeys                           |
+| `POST`   | `/api/auth/self/passkeys/:credential_id/revoke` | ✓    | Revoke a passkey                                       |
+| `GET`    | `/api/auth/self/emails`                         | ✓    | List current user's registered emails                  |
+| `POST`   | `/api/auth/self/emails`                         | ✓    | Add an email                                           |
+| `POST`   | `/api/auth/self/emails/:id/remove`              | ✓    | Remove an email                                        |
 
 Admin endpoints follow the same pattern under `/api/auth/admin/users/:user_id/`.
 

@@ -61,5 +61,3 @@ func adminListUserPasskeys(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, libauth.PasskeyListMap(rows, nil))
 }
-
-

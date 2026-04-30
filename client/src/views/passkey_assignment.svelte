@@ -34,7 +34,8 @@
             });
             if (!beginRes.ok) {
                 throw new Error(
-                    (await beginRes.json()).error || 'Registration begin failed',
+                    (await beginRes.json()).error ||
+                        'Registration begin failed',
                 );
             }
             const begin = await beginRes.json();
@@ -89,7 +90,9 @@
                     (await res.json()).error || 'Email registration failed',
                 );
             }
-            toast.success('Email address registered. Use it to sign in with a magic link.');
+            toast.success(
+                'Email address registered. Use it to sign in with a magic link.',
+            );
             dispatch('completed');
         } catch (error) {
             const message =
@@ -105,9 +108,7 @@
     <Card.Root class="w-full max-w-lg">
         <Card.Header>
             <Card.Title>Finish Account Setup</Card.Title>
-            <Card.Description>
-                Choose how you want to sign in.
-            </Card.Description>
+            <Card.Description>Choose how you want to sign in.</Card.Description>
         </Card.Header>
         <Card.Content class="space-y-4">
             {#if mode === 'choose'}

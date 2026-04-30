@@ -239,9 +239,7 @@
                       id: Number(e.id) || 0,
                       email: e.email as string,
                       createdAt:
-                          typeof e.created_at === 'string'
-                              ? e.created_at
-                              : '',
+                          typeof e.created_at === 'string' ? e.created_at : '',
                   }))
             : [];
     }
@@ -477,7 +475,8 @@
                 {#if registeredEmails.length}
                     {#each registeredEmails as entry (entry.id)}
                         <div class="border rounded p-2 text-xs space-y-1">
-                            <div class="font-medium break-all">{entry.email}</div>
+                            <div class="font-medium break-all"
+                                >{entry.email}</div>
                             <div class="text-muted-foreground">
                                 Added: {formatPasskeyCreatedAt(entry.createdAt)}
                             </div>
@@ -485,7 +484,8 @@
                                 type="button"
                                 size="sm"
                                 variant="destructive"
-                                onclick={() => removeEmail(entry.id, entry.email)}>
+                                onclick={() =>
+                                    removeEmail(entry.id, entry.email)}>
                                 Remove
                             </Button>
                         </div>
