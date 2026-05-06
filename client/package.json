@@ -12,7 +12,7 @@
     "devDependencies": {
         "@internationalized/date": "^3.8.1",
         "@lucide/svelte": "^0.515.0",
-        "@sveltejs/vite-plugin-svelte": "^5.1.0",
+        "@sveltejs/vite-plugin-svelte": "^7.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "@tsconfig/svelte": "^5.0.4",
         "@trivago/prettier-plugin-sort-imports": "^5.2.2",
