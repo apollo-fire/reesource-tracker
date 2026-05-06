@@ -1,4 +1,6 @@
+---
 name: Build and Distribute Sample Tracker
+run-name: Build and Distribute Sample Tracker
 
 on:
   push:
@@ -6,43 +8,56 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: write
-  packages: write
-  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   build-client:
+    name: Build Client
     runs-on: ubuntu-latest
+    permissions:
+      # Required to checkout the repository
+      contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@f4d14e03ff726c06358e5557344e1da148b56cf7 # v1
       - name: Build Frontend
         run: |
           cd client
           bun install
           bun run build --emptyOutDir
       - name: Upload Frontend Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: client-build
           path: build/client/**
 
   build-linux:
+    name: Build Linux
     needs: build-client
     runs-on: ubuntu-latest
+    permissions:
+      # Required to checkout the repository
+      contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Download Frontend Build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: client-build
           path: build/client
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
       - name: Build Linux binary
@@ -56,24 +71,30 @@ jobs:
       - name: Copy migrations
         run: cp -r database/migrations build/migrations
       - name: Upload Linux binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: reesource-tracker-linux
           path: build/**
 
   build-windows:
+    name: Build Windows
     needs: build-client
     runs-on: windows-latest
+    permissions:
+      # Required to checkout the repository
+      contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Download Frontend Build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: client-build
           path: build/client
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.22"
       - name: Build Windows binary
@@ -88,32 +109,39 @@ jobs:
       - name: Copy migrations
         run: Copy-Item -Recurse -Force database/migrations build/migrations
       - name: Upload Windows binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: reesource-tracker-windows
           path: build/**
 
   build-docker:
+    name: Build Docker
     runs-on: ubuntu-latest
     needs: build-client
+    permissions:
+      contents: read # Required to checkout the repository
+      packages: write # Required to push images to GitHub Container Registry
+      id-token: write # Required for OIDC token signing
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - name: Download Frontend Build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: client-build
           path: client_built
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         if: github.ref == 'refs/heads/main'
         with:
           context: .
