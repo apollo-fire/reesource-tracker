@@ -1,0 +1,73 @@
+package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+)
+
+func TestFrontendHandler_ServesAssetFile(t *testing.T) {
+	router, _ := setupFrontendTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/app/assets/app.js", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "console.log('ok');", strings.TrimSpace(rec.Body.String()))
+}
+
+func TestFrontendHandler_NonAssetPathReturnsIndex(t *testing.T) {
+	router, _ := setupFrontendTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/app/secret.txt", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "test index")
+}
+
+func TestFrontendHandler_BackslashPathIsForbidden(t *testing.T) {
+	router, _ := setupFrontendTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/app/assets/foo%5Cbar.js", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestFrontendHandler_TraversalPathIsForbidden(t *testing.T) {
+	router, _ := setupFrontendTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/app/assets/../../secret.txt", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func setupFrontendTestRouter(t *testing.T) (*gin.Engine, string) {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+
+	clientDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "index.html"), []byte("<html><body>test index</body></html>"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(clientDir, "assets"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "assets", "app.js"), []byte("console.log('ok');"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "secret.txt"), []byte("should not be served directly"), 0o644))
+
+	router := gin.New()
+	router.LoadHTMLGlob(filepath.Join(clientDir, "*.html"))
+	router.GET("/app/*path", frontendHandler(clientDir))
+
+	return router, clientDir
+}

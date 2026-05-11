@@ -43,35 +43,7 @@ func main() {
 			println("Could not resolve client path:", err)
 			return
 		}
-		r.GET("/app/*path", func(c *gin.Context) {
-			path := c.Param("path")
-			// Only allow frontend asset files under /assets/
-			if strings.HasPrefix(path, "/assets/") {
-				// Reject alternate separators and traversal attempts
-				if strings.Contains(path, "\\") {
-					c.AbortWithStatus(http.StatusForbidden)
-					return
-				}
-				cleanPath := filepath.Clean(path)
-				if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/") {
-					c.AbortWithStatus(http.StatusForbidden)
-					return
-				}
-				relPath := strings.TrimPrefix(cleanPath, "/")
-				absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
-				if err != nil {
-					c.AbortWithStatus(http.StatusInternalServerError)
-					return
-				}
-				if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
-					c.AbortWithStatus(http.StatusForbidden)
-					return
-				}
-				c.File(absPath)
-				return
-			}
-			c.HTML(http.StatusOK, "index.html", gin.H{})
-		})
+		r.GET("/app/*path", frontendHandler(safePath))
 
 	}
 	// Create context with cancel for graceful shutdown
@@ -118,4 +90,36 @@ func proxy(c *gin.Context) {
 	}
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func frontendHandler(safePath string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Param("path")
+		// Only allow frontend asset files under /assets/
+		if strings.HasPrefix(path, "/assets/") {
+			// Reject alternate separators and traversal attempts
+			if strings.Contains(path, "\\") {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			cleanPath := filepath.Clean(path)
+			if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/") {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			relPath := strings.TrimPrefix(cleanPath, "/")
+			absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			c.File(absPath)
+			return
+		}
+		c.HTML(http.StatusOK, "index.html", gin.H{})
+	}
 }
