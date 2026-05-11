@@ -15,7 +15,7 @@
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "@tsconfig/svelte": "^5.0.4",
-        "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+        "@trivago/prettier-plugin-sort-imports": "^6.0.2",
         "bits-ui": "^2.8.6",
         "clsx": "^2.1.1",
         "mode-watcher": "^1.0.8",
