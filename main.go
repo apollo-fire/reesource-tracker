@@ -103,7 +103,7 @@ func frontendHandler(safePath string) gin.HandlerFunc {
 				return
 			}
 			cleanPath := filepath.Clean(path)
-			if strings.HasPrefix(cleanPath, "..") || (filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/")) {
+			if filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/") {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
