@@ -45,10 +45,20 @@ func main() {
 		}
 		r.GET("/app/*path", func(c *gin.Context) {
 			path := c.Param("path")
-			// Check if the first segment is "assets"
-			segments := strings.SplitN(path, "/", 3)
-			if len(segments) > 1 && segments[1] == "assets" {
-				absPath, err := filepath.Abs(filepath.Join(safePath, path))
+			// Only allow frontend asset files under /assets/
+			if strings.HasPrefix(path, "/assets/") {
+				// Reject alternate separators and traversal attempts
+				if strings.Contains(path, "\\") {
+					c.AbortWithStatus(http.StatusForbidden)
+					return
+				}
+				cleanPath := filepath.Clean(path)
+				if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/") {
+					c.AbortWithStatus(http.StatusForbidden)
+					return
+				}
+				relPath := strings.TrimPrefix(cleanPath, "/")
+				absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
 				if err != nil {
 					c.AbortWithStatus(http.StatusInternalServerError)
 					return
