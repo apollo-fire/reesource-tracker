@@ -54,6 +54,19 @@ func TestFrontendHandler_TraversalPathIsForbidden(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, rec.Code)
 }
 
+func TestFrontendHandler_NormalizedAssetPathServesFile(t *testing.T) {
+	clientDir := setupFrontendFixture(t)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/app/assets/app.js", nil)
+	c.Params = gin.Params{{Key: "path", Value: "/assets/../assets/app.js"}}
+
+	frontendHandler(clientDir)(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "console.log('ok');", strings.TrimSpace(rec.Body.String()))
+}
+
 func TestLegacyHandler_ProofOfConcept_DirectNonAssetFileAccess(t *testing.T) {
 	router, _ := setupFrontendTestRouterWithHandler(t, legacyNoAssetScopeHandler)
 

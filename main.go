@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"reesource-tracker/api"
 	"reesource-tracker/lib/database"
@@ -94,21 +95,22 @@ func proxy(c *gin.Context) {
 
 func frontendHandler(safePath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		path := c.Param("path")
+		requestPath := c.Param("path")
 		// Only allow frontend asset files under /assets/
-		if strings.HasPrefix(path, "/assets/") {
+		if strings.HasPrefix(requestPath, "/assets/") {
 			// Reject alternate separators and traversal attempts
-			if strings.Contains(path, "\\") {
+			if strings.Contains(requestPath, "\\") {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
-			cleanPath := filepath.Clean(path)
-			if filepath.IsAbs(cleanPath) && !strings.HasPrefix(cleanPath, "/assets/") {
+			cleanPath := path.Clean(requestPath)
+			if !strings.HasPrefix(cleanPath, "/assets/") {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
 			relPath := strings.TrimPrefix(cleanPath, "/")
-			absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+			fsRelPath := filepath.FromSlash(relPath)
+			absPath, err := filepath.Abs(filepath.Join(safePath, fsRelPath))
 			if err != nil {
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
