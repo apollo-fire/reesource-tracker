@@ -54,20 +54,93 @@ func TestFrontendHandler_TraversalPathIsForbidden(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, rec.Code)
 }
 
+func TestLegacyHandler_WithoutAssetScope_AllowsNonAssetRead(t *testing.T) {
+	router, _ := setupFrontendTestRouterWithHandler(t, legacyNoAssetScopeHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/app/secret.txt", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "should not be served directly", strings.TrimSpace(rec.Body.String()))
+}
+
+func TestLegacyHandler_WithoutCleanScopeCheck_AllowsAssetTraversalToNonAsset(t *testing.T) {
+	clientDir := setupFrontendFixture(t)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/app/assets/app.js", nil)
+	c.Params = gin.Params{{Key: "path", Value: "/assets/../secret.txt"}}
+
+	legacyNoCleanScopeCheckHandler(clientDir)(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "should not be served directly", strings.TrimSpace(rec.Body.String()))
+}
+
 func setupFrontendTestRouter(t *testing.T) (*gin.Engine, string) {
+	return setupFrontendTestRouterWithHandler(t, frontendHandler)
+}
+
+func setupFrontendTestRouterWithHandler(t *testing.T, handlerFactory func(string) gin.HandlerFunc) (*gin.Engine, string) {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
+
+	clientDir := setupFrontendFixture(t)
+
+	router := gin.New()
+	router.LoadHTMLGlob(filepath.Join(clientDir, "*.html"))
+	router.GET("/app/*path", handlerFactory(clientDir))
+
+	return router, clientDir
+}
+
+func setupFrontendFixture(t *testing.T) string {
+	t.Helper()
 
 	clientDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "index.html"), []byte("<html><body>test index</body></html>"), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(clientDir, "assets"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "assets", "app.js"), []byte("console.log('ok');"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(clientDir, "secret.txt"), []byte("should not be served directly"), 0o644))
+	return clientDir
+}
 
-	router := gin.New()
-	router.LoadHTMLGlob(filepath.Join(clientDir, "*.html"))
-	router.GET("/app/*path", frontendHandler(clientDir))
+func legacyNoAssetScopeHandler(safePath string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Param("path")
+		relPath := strings.TrimPrefix(path, "/")
+		absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.File(absPath)
+	}
+}
 
-	return router, clientDir
+func legacyNoCleanScopeCheckHandler(safePath string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Param("path")
+		if strings.HasPrefix(path, "/assets/") {
+			relPath := strings.TrimPrefix(path, "/")
+			absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			c.File(absPath)
+			return
+		}
+		c.HTML(http.StatusOK, "index.html", gin.H{})
+	}
 }
