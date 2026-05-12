@@ -54,7 +54,7 @@ func TestFrontendHandler_TraversalPathIsForbidden(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, rec.Code)
 }
 
-func TestLegacyHandler_WithoutAssetScope_AllowsNonAssetRead(t *testing.T) {
+func TestLegacyHandler_ProofOfConcept_DirectNonAssetFileAccess(t *testing.T) {
 	router, _ := setupFrontendTestRouterWithHandler(t, legacyNoAssetScopeHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/app/secret.txt", nil)
@@ -65,7 +65,7 @@ func TestLegacyHandler_WithoutAssetScope_AllowsNonAssetRead(t *testing.T) {
 	require.Equal(t, "should not be served directly", strings.TrimSpace(rec.Body.String()))
 }
 
-func TestLegacyHandler_WithoutCleanScopeCheck_AllowsAssetTraversalToNonAsset(t *testing.T) {
+func TestLegacyHandler_ProofOfConcept_PathTraversalAttack(t *testing.T) {
 	clientDir := setupFrontendFixture(t)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -107,16 +107,16 @@ func setupFrontendFixture(t *testing.T) string {
 	return clientDir
 }
 
-func legacyNoAssetScopeHandler(safePath string) gin.HandlerFunc {
+func legacyNoAssetScopeHandler(baseDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Param("path")
 		relPath := strings.TrimPrefix(path, "/")
-		absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+		absPath, err := filepath.Abs(filepath.Join(baseDir, relPath))
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+		if absPath != baseDir && !strings.HasPrefix(absPath, baseDir+string(os.PathSeparator)) {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
@@ -124,17 +124,17 @@ func legacyNoAssetScopeHandler(safePath string) gin.HandlerFunc {
 	}
 }
 
-func legacyNoCleanScopeCheckHandler(safePath string) gin.HandlerFunc {
+func legacyNoCleanScopeCheckHandler(baseDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Param("path")
 		if strings.HasPrefix(path, "/assets/") {
 			relPath := strings.TrimPrefix(path, "/")
-			absPath, err := filepath.Abs(filepath.Join(safePath, relPath))
+			absPath, err := filepath.Abs(filepath.Join(baseDir, relPath))
 			if err != nil {
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}
-			if absPath != safePath && !strings.HasPrefix(absPath, safePath+string(os.PathSeparator)) {
+			if absPath != baseDir && !strings.HasPrefix(absPath, baseDir+string(os.PathSeparator)) {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
