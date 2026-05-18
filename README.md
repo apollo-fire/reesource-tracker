@@ -102,7 +102,7 @@ For development, build and run the backend and frontend locally from source.
    ```PASSWORD```: User password  
    ```HOST```: Gost address, Use ```127.0.0.01```  
    ```PORT```: Use ```5432```  
-   ```DATABASE```: Database name, e.g. ```postges```  
+   ```DATABASE```: Database name, e.g. ```postgres```  
 
    - `DEV=true`: Enables development mode, which proxies frontend requests to the Vite dev server (running on port 5173). In production mode (when `DEV` is not set), the backend serves static files from the `client` directory.
 
