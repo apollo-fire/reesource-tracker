@@ -79,7 +79,7 @@ For development, build and run the backend and frontend locally from source.
 - [Go](https://golang.org/doc/install) (v1.18+ recommended)
 - [Bun](https://bun.sh/) (v1+ recommended)
 - [Docker](https://docs.docker.com/engine/install/ubuntu/) (for unit testing, installed in your WSL distribution)
-- [PostGreSQL] (https://www.postgresql.org/download/) (for running local SQL database)
+- [PostGreSQL](https://www.postgresql.org/download/) (for running local SQL database)
 
 ### Backend Setup (Go + PostGreSQL)
 
