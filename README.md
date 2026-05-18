@@ -100,7 +100,7 @@ For development, build and run the backend and frontend locally from source.
    ```
    ```USER```: Username e.g. ```postgresql```  
    ```PASSWORD```: User password  
-   ```HOST```: Gost address, Use ```127.0.0.01```  
+   ```HOST```: Host address, Use ```127.0.0.1```  
    ```PORT```: Use ```5432```  
    ```DATABASE```: Database name, e.g. ```postgres```  
 
