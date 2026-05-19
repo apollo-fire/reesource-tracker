@@ -65,11 +65,6 @@ docker compose pull app
 docker compose up -d app
 ```
 
-### Notes
-
-- Change the PostgreSQL password before deploying.
-- Do not set `DEV=true` in production.
-
 ## Development Guide
 
 For development, build and run the backend and frontend locally from source.
@@ -217,58 +212,6 @@ The project uses Testcontainers for integration testing with PostgreSQL.
    ```powershell
    go test ./... -v
    ```
-
-## Authentication
-
-The app supports two sign-in methods, which can be used simultaneously.
-
-### Passkeys (WebAuthn)
-
-The default method. A user account is created via an **assignment link** — a short-lived, single-use URL that ties a device's passkey to a specific user. Assignment links can be created by an admin or by the user themselves from the account page.
-
-### Email (Magic Links)
-
-Enabled by setting `MAGIC_LINK_WEBHOOK_URL`. When a user requests a sign-in link, the server dispatches a `POST` to the webhook with the login URL; no email server is required — use any HTTP endpoint (e.g. a transactional email provider's API or an automation webhook).
-
-Flow:
-
-1. `POST /api/auth/email/login/request` — client submits `{"email": "..."}`. Always returns `200`; does not reveal whether the address is registered.
-2. The webhook receives `{"email", "name", "login_url"}` and sends the link to the user.
-3. User clicks the link; the frontend extracts `?magic_token=` from the URL and calls `POST /api/auth/email/login/consume` with `{"token": "..."}` to establish a session.
-
-Tokens expire after **10 minutes** and are single-use. A **30-second cooldown** per user prevents request flooding.
-
-#### Email registration via assignment link
-
-An assignment link can also be used to register an email address instead of a passkey, allowing users without a WebAuthn-capable device to register:
-
-`POST /api/auth/email/register` — body: `{"assignment_token": "...", "email": "..."}`.
-
-### Auth API reference
-
-| Method   | Path                                            | Auth | Description                                            |
-| -------- | ----------------------------------------------- | ---- | ------------------------------------------------------ |
-| `GET`    | `/api/auth/session`                             | —    | Current session info                                   |
-| `POST`   | `/api/auth/logout`                              | —    | Clear session cookie                                   |
-| `GET`    | `/api/auth/features`                            | —    | Feature flags (e.g. `magic_links_enabled`)             |
-| `POST`   | `/api/auth/register/begin`                      | —    | Begin passkey registration (requires assignment token) |
-| `POST`   | `/api/auth/register/finish`                     | —    | Complete passkey registration                          |
-| `POST`   | `/api/auth/login/begin`                         | —    | Begin passkey login                                    |
-| `POST`   | `/api/auth/login/finish`                        | —    | Complete passkey login                                 |
-| `POST`   | `/api/auth/email/register`                      | —    | Register email via assignment link                     |
-| `POST`   | `/api/auth/email/login/request`                 | —    | Request magic link                                     |
-| `POST`   | `/api/auth/email/login/consume`                 | —    | Consume magic link token, establish session            |
-| `GET`    | `/api/auth/self/assignment-link`                | ✓    | Get current user's active assignment link              |
-| `POST`   | `/api/auth/self/assignment-link`                | ✓    | Create assignment link for current user                |
-| `DELETE` | `/api/auth/self/assignment-link`                | ✓    | Revoke current user's assignment link                  |
-| `GET`    | `/api/auth/self/passkeys`                       | ✓    | List current user's passkeys                           |
-| `POST`   | `/api/auth/self/passkeys/:credential_id/revoke` | ✓    | Revoke a passkey                                       |
-| `GET`    | `/api/auth/self/emails`                         | ✓    | List current user's registered emails                  |
-| `POST`   | `/api/auth/self/emails`                         | ✓    | Add an email                                           |
-| `POST`   | `/api/auth/self/emails/:id/remove`              | ✓    | Remove an email                                        |
-
-Admin endpoints follow the same pattern under `/api/auth/admin/users/:user_id/`.
-
 ## Usage of SQLC
 
 - SQLC reads SQL queries from `database/query.sql` and generates Go code for type-safe database access.
