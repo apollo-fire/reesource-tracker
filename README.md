@@ -79,8 +79,9 @@ For development, build and run the backend and frontend locally from source.
 - [Go](https://golang.org/doc/install) (v1.18+ recommended)
 - [Bun](https://bun.sh/) (v1+ recommended)
 - [Docker](https://docs.docker.com/engine/install/ubuntu/) (for unit testing, installed in your WSL distribution)
+- [PostGreSQL](https://www.postgresql.org/download/) (for running local SQL database)
 
-### Backend Setup (Go)
+### Backend Setup (Go + PostGreSQL)
 
 1. **Install Go dependencies:**
 
@@ -95,8 +96,13 @@ For development, build and run the backend and frontend locally from source.
 
    ```bash
    DEV=true
-   DATABASE_URL=postgresql://USER:PASS@HOST:PORT/DATABASE?sslmode=disable
+   DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=disable
    ```
+   ```USER```: Username e.g. ```postgresql```  
+   ```PASSWORD```: User password  
+   ```HOST```: Host address, use ```127.0.0.1``` for the same host as the server
+   ```PORT```: As configured in the postgres database, default ```5432```  
+   ```DATABASE```: Database name, e.g. ```postgres```  
 
    - `DEV=true`: Enables development mode, which proxies frontend requests to the Vite dev server (running on port 5173). In production mode (when `DEV` is not set), the backend serves static files from the `client` directory.
 
