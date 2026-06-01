@@ -29,7 +29,7 @@ func Routes(route *gin.RouterGroup) {
 
 // DELETE /product/:product_id
 func deleteProduct(c *gin.Context) {
-	if !middleware.EnsureRole(c, "maintainer") || !middleware.EnsureConfirmed(c) {
+	if !middleware.EnsureRole(c, "maintainer") {
 		return
 	}
 	productID := c.Param("product_id")
