@@ -28,7 +28,7 @@ func Routes(route *gin.RouterGroup) {
 }
 
 func deleteLocation(c *gin.Context) {
-	if !middleware.EnsureRole(c, "maintainer") || !middleware.EnsureConfirmed(c) {
+	if !middleware.EnsureRole(c, "maintainer") {
 		return
 	}
 	locationID := c.Param("location_id")
