@@ -36,9 +36,9 @@
         "vite": "^7.3.2"
     },
     "dependencies": {
-        "lucide-svelte": "^0.525.0",
+        "lucide-svelte": "^1.0.1",
         "qr-scanner": "^1.4.2",
         "qrcode": "^1.5.4",
-        "uuid": "^11.1.0"
+        "uuid": "^14.0.0"
     }
 }
