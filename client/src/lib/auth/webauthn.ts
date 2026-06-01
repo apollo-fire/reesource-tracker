@@ -106,7 +106,9 @@ export async function createPasskeyCredential(
         credentialID: bytesToBase64Url(new Uint8Array(result.rawId)),
         publicKey: bytesToBase64Url(new Uint8Array(publicKeyBuffer)),
         transports: response.getTransports?.() ?? ['internal'],
-        clientDataJSON: bytesToBase64Url(new Uint8Array(response.clientDataJSON)),
+        clientDataJSON: bytesToBase64Url(
+            new Uint8Array(response.clientDataJSON),
+        ),
     };
 }
 
