@@ -531,7 +531,14 @@ func TestFullRegistrationFlow(t *testing.T) {
 // (which promotes the user to admin) bootstrap is no longer required.
 // This test depends on TestFullRegistrationFlow having already run.
 func TestGetBootstrapStatus_NotRequired(t *testing.T) {
+	mock_db.ResetMockDB()
 	database.Connection = mock_db.MockConnection
+
+	ctx := context.Background()
+	uid, err := uuid.New().MarshalBinary()
+	require.NoError(t, err)
+	require.NoError(t, database.Connection.UpsertUserName(ctx, database.UpsertUserNameParams{ID: uid, Name: "Admin"}))
+	require.NoError(t, database.Connection.SetUserRole(ctx, database.SetUserRoleParams{UserID: uid, Role: "admin"}))
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/auth/bootstrap-status", nil)
