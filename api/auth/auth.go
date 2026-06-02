@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"reesource-tracker/api/middleware"
 	libauth "reesource-tracker/lib/auth"
@@ -566,7 +567,7 @@ func assignmentLinkResponse(c *gin.Context, row database.PasskeyAssignmentLink, 
 }
 
 func buildAssignmentURL(c *gin.Context, token string) string {
-	scheme := c.GetHeader("X-Forwarded-Proto")
+	scheme := firstForwardedValue(c.GetHeader("X-Forwarded-Proto"))
 	if scheme == "" {
 		if c.Request.TLS != nil {
 			scheme = "https"
@@ -574,11 +575,18 @@ func buildAssignmentURL(c *gin.Context, token string) string {
 			scheme = "http"
 		}
 	}
-	host := c.GetHeader("X-Forwarded-Host")
+	host := firstForwardedValue(c.GetHeader("X-Forwarded-Host"))
 	if host == "" {
 		host = c.Request.Host
 	}
 	return scheme + "://" + host + "/app?assignment_token=" + url.QueryEscape(token)
+}
+
+func firstForwardedValue(value string) string {
+	if idx := strings.Index(value, ","); idx >= 0 {
+		value = value[:idx]
+	}
+	return strings.TrimSpace(value)
 }
 
 func passkeyListResponse(rows []database.Passkey, activeCredentialID []byte) []gin.H {
@@ -613,4 +621,3 @@ func credentialIDFromParam(c *gin.Context) ([]byte, string, error) {
 	}
 	return credentialID, hex.EncodeToString(credentialID), nil
 }
-
