@@ -90,6 +90,7 @@ func getBootstrapStatus(c *gin.Context) {
 		res["assignment_url"] = "/app?assignment_token=" + url.QueryEscape(token)
 	}
 	c.JSON(http.StatusOK, res)
+}
 
 func getBootstrapOptions(c *gin.Context) {
 	required, token, userID, err := libauth.EnsureBootstrapState(c)
