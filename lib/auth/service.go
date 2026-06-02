@@ -43,10 +43,12 @@ func EnsureBootstrapState(ctx context.Context) (bool, string, string, error) {
 		// a usable assignment token.
 		return true, "", uid, nil
 	}
+	if err != sql.ErrNoRows {
+		return false, "", "", err
+	}
 
 	// No active bootstrap link yet. Let the user choose an existing account or create a new one.
 	return true, "", "", nil
-}
 
 func ListBootstrapUserOptions(ctx context.Context) ([]BootstrapUserOption, error) {
 	users, err := database.Connection.ListUsersWithoutAdmin(ctx)
