@@ -550,9 +550,11 @@ func TestGetBootstrapStatus_NotRequired(t *testing.T) {
 	assert.Equal(t, false, resp["bootstrap_required"])
 }
 
-// TestFullLoginFlow tests the complete login flow using the passkey registered
-// in TestFullRegistrationFlow (DB state is inherited from that test).
+// TestFullLoginFlow tests the complete login flow and seeds its own passkey
+// registration state to avoid order-dependent test behavior.
 func TestFullLoginFlow(t *testing.T) {
+	TestFullRegistrationFlow(t)
+
 	database.Connection = mock_db.MockConnection
 	r := setupRouter()
 
