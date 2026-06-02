@@ -528,12 +528,12 @@ func adminListAuditLogs(c *gin.Context) {
 	limit := int32(100)
 	offset := int32(0)
 	if s := c.Query("limit"); s != "" {
-		if v, err := strconv.Atoi(s); err == nil && v > 0 {
+		if v, err := strconv.ParseInt(s, 10, 32); err == nil && v > 0 {
 			limit = int32(v)
 		}
 	}
 	if s := c.Query("offset"); s != "" {
-		if v, err := strconv.Atoi(s); err == nil && v >= 0 {
+		if v, err := strconv.ParseInt(s, 10, 32); err == nil && v >= 0 {
 			offset = int32(v)
 		}
 	}
