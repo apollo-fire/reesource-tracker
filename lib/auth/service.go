@@ -70,7 +70,9 @@ func SelectBootstrapUser(ctx context.Context, userID []byte) (string, string, er
 	}
 	tokenHash := HashToken(token)
 
-	_ = database.Connection.RevokeActiveBootstrapLinks(ctx)
+	if err := database.Connection.RevokeActiveBootstrapLinks(ctx); err != nil {
+		return "", "", err
+	}
 	row, err := database.Connection.CreateAssignmentLink(ctx, database.CreateAssignmentLinkParams{
 		TokenHash:       tokenHash,
 		UserID:          userID,
