@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"reesource-tracker/lib/auth"
 	libauth "reesource-tracker/lib/auth"
 	"reesource-tracker/lib/database"
 
@@ -24,21 +25,6 @@ func SetCookieSecret(secret []byte) {
 	cookieSecret = secret
 }
 
-func isSecureRequest(c *gin.Context) bool {
-	if c.Request != nil && c.Request.TLS != nil {
-		return true
-	}
-
-	xForwardedProto := c.GetHeader("X-Forwarded-Proto")
-	for _, proto := range strings.Split(xForwardedProto, ",") {
-		if strings.EqualFold(strings.TrimSpace(proto), "https") {
-			return true
-		}
-	}
-
-	return false
-}
-
 func setSessionCookieValue(c *gin.Context, token string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     SessionCookieName,
@@ -46,7 +32,7 @@ func setSessionCookieValue(c *gin.Context, token string) {
 		Path:     "/",
 		MaxAge:   sessionDuration,
 		HttpOnly: true,
-		Secure:   isSecureRequest(c),
+		Secure:   auth.IsSecureRequest(c),
 		SameSite: http.SameSiteLaxMode,
 	})
 }

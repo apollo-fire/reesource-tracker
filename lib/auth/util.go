@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 func RandomHex(size int) (string, error) {
@@ -39,6 +42,25 @@ func BytesEqual(a, b []byte) bool {
 		if a[i] != b[i] {
 			return false
 		}
+	}
+	return true
+}
+
+func IsSecureRequest(c *gin.Context) bool {
+	// Only allow insecure reqeusts in development mode
+	if gin.Mode() == gin.DebugMode {
+		if c.Request != nil && c.Request.TLS != nil {
+			return true
+		}
+
+		xForwardedProto := c.GetHeader("X-Forwarded-Proto")
+		for _, proto := range strings.Split(xForwardedProto, ",") {
+			if strings.EqualFold(strings.TrimSpace(proto), "https") {
+				return true
+			}
+		}
+
+		return false
 	}
 	return true
 }
