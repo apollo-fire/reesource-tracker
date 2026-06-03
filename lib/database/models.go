@@ -45,6 +45,15 @@ type Location struct {
 	ParentLocationID sql.Null[[]byte]
 }
 
+type MagicLink struct {
+	ID        int64
+	TokenHash string
+	UserID    []byte
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    sql.NullTime
+}
+
 type Passkey struct {
 	ID           int64
 	CredentialID []byte
@@ -118,6 +127,13 @@ type Tag struct {
 type User struct {
 	ID   []byte
 	Name string
+}
+
+type UserEmail struct {
+	ID        int64
+	UserID    []byte
+	Email     string
+	CreatedAt time.Time
 }
 
 type UserRole struct {

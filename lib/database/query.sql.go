@@ -76,6 +76,18 @@ func (q *Queries) ConsumeAssignmentLink(ctx context.Context, id int64) error {
 	return err
 }
 
+const consumeMagicLink = `-- name: ConsumeMagicLink :exec
+UPDATE magic_links
+SET used_at = NOW()
+WHERE id = $1
+    AND used_at IS NULL
+`
+
+func (q *Queries) ConsumeMagicLink(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, consumeMagicLink, id)
+	return err
+}
+
 const countAdmins = `-- name: CountAdmins :one
 SELECT COUNT(*)
 FROM user_roles
@@ -132,6 +144,32 @@ func (q *Queries) CreateAssignmentLink(ctx context.Context, arg CreateAssignment
 	return i, err
 }
 
+const createMagicLink = `-- name: CreateMagicLink :one
+INSERT INTO magic_links (token_hash, user_id, expires_at)
+VALUES ($1, $2, $3)
+RETURNING id, token_hash, user_id, created_at, expires_at, used_at
+`
+
+type CreateMagicLinkParams struct {
+	TokenHash string
+	UserID    []byte
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreateMagicLink(ctx context.Context, arg CreateMagicLinkParams) (MagicLink, error) {
+	row := q.db.QueryRowContext(ctx, createMagicLink, arg.TokenHash, arg.UserID, arg.ExpiresAt)
+	var i MagicLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UsedAt,
+	)
+	return i, err
+}
+
 const deleteAuditLogsOlderThan = `-- name: DeleteAuditLogsOlderThan :exec
 DELETE FROM audit_logs
 WHERE created_at < $1
@@ -163,6 +201,17 @@ func (q *Queries) DeleteLocationByID(ctx context.Context, id []byte) error {
 	return err
 }
 
+const deleteMagicLinksForUser = `-- name: DeleteMagicLinksForUser :exec
+DELETE FROM magic_links
+WHERE user_id = $1
+    AND used_at IS NULL
+`
+
+func (q *Queries) DeleteMagicLinksForUser(ctx context.Context, userID []byte) error {
+	_, err := q.db.ExecContext(ctx, deleteMagicLinksForUser, userID)
+	return err
+}
+
 const deleteProductByID = `-- name: DeleteProductByID :exec
 DELETE FROM products
 WHERE
@@ -182,6 +231,22 @@ WHERE
 
 func (q *Queries) DeleteUserByID(ctx context.Context, id []byte) error {
 	_, err := q.db.ExecContext(ctx, deleteUserByID, id)
+	return err
+}
+
+const deleteUserEmail = `-- name: DeleteUserEmail :exec
+DELETE FROM user_emails
+WHERE user_id = $1
+    AND email = $2
+`
+
+type DeleteUserEmailParams struct {
+	UserID []byte
+	Email  string
+}
+
+func (q *Queries) DeleteUserEmail(ctx context.Context, arg DeleteUserEmailParams) error {
+	_, err := q.db.ExecContext(ctx, deleteUserEmail, arg.UserID, arg.Email)
 	return err
 }
 
@@ -271,6 +336,28 @@ func (q *Queries) GetActiveBootstrapLink(ctx context.Context) (PasskeyAssignment
 	return i, err
 }
 
+const getActiveMagicLinkByTokenHash = `-- name: GetActiveMagicLinkByTokenHash :one
+SELECT id, token_hash, user_id, created_at, expires_at, used_at
+FROM magic_links
+WHERE token_hash = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
+`
+
+func (q *Queries) GetActiveMagicLinkByTokenHash(ctx context.Context, tokenHash string) (MagicLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveMagicLinkByTokenHash, tokenHash)
+	var i MagicLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UsedAt,
+	)
+	return i, err
+}
+
 const getActiveStandardAssignmentLinkByUserID = `-- name: GetActiveStandardAssignmentLinkByUserID :one
 SELECT id, token_hash, user_id, created_by_user_id, purpose, created_at, expires_at, consumed_at, revoked_at
 FROM passkey_assignment_links
@@ -319,6 +406,28 @@ func (q *Queries) GetAssignmentLinkByID(ctx context.Context, id int64) (PasskeyA
 		&i.ExpiresAt,
 		&i.ConsumedAt,
 		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getLatestMagicLinkForUser = `-- name: GetLatestMagicLinkForUser :one
+SELECT id, token_hash, user_id, created_at, expires_at, used_at
+FROM magic_links
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestMagicLinkForUser(ctx context.Context, userID []byte) (MagicLink, error) {
+	row := q.db.QueryRowContext(ctx, getLatestMagicLinkForUser, userID)
+	var i MagicLink
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UsedAt,
 	)
 	return i, err
 }
@@ -539,6 +648,21 @@ func (q *Queries) GetSampleById(ctx context.Context, id []byte) (Sample, error) 
 	return i, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT users.id, users.name
+FROM users
+INNER JOIN user_emails ON user_emails.user_id = users.id
+WHERE LOWER(user_emails.email) = LOWER($1)
+LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, lower)
+	var i User
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, name
 FROM
@@ -743,6 +867,22 @@ func (q *Queries) InsertPasskey(ctx context.Context, arg InsertPasskeyParams) er
 		arg.Column5,
 		arg.Label,
 	)
+	return err
+}
+
+const insertUserEmail = `-- name: InsertUserEmail :exec
+INSERT INTO user_emails (user_id, email)
+VALUES ($1, $2)
+ON CONFLICT (user_id, email) DO NOTHING
+`
+
+type InsertUserEmailParams struct {
+	UserID []byte
+	Email  string
+}
+
+func (q *Queries) InsertUserEmail(ctx context.Context, arg InsertUserEmailParams) error {
+	_, err := q.db.ExecContext(ctx, insertUserEmail, arg.UserID, arg.Email)
 	return err
 }
 
@@ -962,6 +1102,41 @@ func (q *Queries) ListSamples(ctx context.Context) ([]ListSamplesRow, error) {
 			&i.ProductIssue,
 			&i.CurrentModsSummary,
 			&i.OwnerName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserEmails = `-- name: ListUserEmails :many
+SELECT id, user_id, email, created_at
+FROM user_emails
+WHERE user_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListUserEmails(ctx context.Context, userID []byte) ([]UserEmail, error) {
+	rows, err := q.db.QueryContext(ctx, listUserEmails, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserEmail
+	for rows.Next() {
+		var i UserEmail
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Email,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

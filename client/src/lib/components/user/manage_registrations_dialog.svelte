@@ -19,6 +19,12 @@
         isCurrentSession: boolean;
     };
 
+    type RegisteredEmail = {
+        id: number;
+        email: string;
+        createdAt: string;
+    };
+
     let {
         open = $bindable(false),
         userId = '',
@@ -33,6 +39,9 @@
 
     let registrationLink = $state<RegistrationLink | null>(null);
     let registeredPasskeys = $state<RegisteredPasskey[]>([]);
+    let registeredEmails = $state<RegisteredEmail[]>([]);
+    let newEmail = $state('');
+    let emailWorking = $state(false);
 
     let confirmOpen = $state(false);
     let confirmTitle = $state('Confirm Action');
@@ -62,6 +71,18 @@
         return useAdminEndpoints
             ? `/api/auth/admin/passkeys/${credentialId}/revoke`
             : `/api/auth/self/passkeys/${credentialId}/revoke`;
+    }
+
+    function emailsEndpoint(): string {
+        return useAdminEndpoints
+            ? `/api/auth/admin/users/${userId}/emails`
+            : '/api/auth/self/emails';
+    }
+
+    function removeEmailEndpoint(emailId: number): string {
+        return useAdminEndpoints
+            ? `/api/auth/admin/users/${userId}/emails/${emailId}/remove`
+            : `/api/auth/self/emails/${emailId}/remove`;
     }
 
     function openConfirm(
@@ -200,6 +221,78 @@
         }
     }
 
+    async function loadEmails() {
+        if (!hasTargetUser()) {
+            return;
+        }
+
+        const res = await fetch(emailsEndpoint());
+        if (!res.ok) {
+            return;
+        }
+
+        const data = await res.json();
+        registeredEmails = Array.isArray(data)
+            ? data
+                  .filter((e) => typeof e.email === 'string')
+                  .map((e) => ({
+                      id: Number(e.id) || 0,
+                      email: e.email as string,
+                      createdAt:
+                          typeof e.created_at === 'string' ? e.created_at : '',
+                  }))
+            : [];
+    }
+
+    async function addEmail() {
+        if (!hasTargetUser() || emailWorking || !newEmail.trim()) {
+            return;
+        }
+        emailWorking = true;
+        try {
+            const res = await fetch(emailsEndpoint(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail.trim() }),
+            });
+            if (!res.ok) {
+                toast.error('Failed to add email address.');
+                return;
+            }
+            newEmail = '';
+            await loadEmails();
+            toast.success('Email address added.');
+        } finally {
+            emailWorking = false;
+        }
+    }
+
+    async function removeEmail(emailId: number, emailAddr: string) {
+        if (!hasTargetUser()) {
+            return;
+        }
+
+        openConfirm(
+            'Remove Email Address',
+            `Remove ${emailAddr} from ${userLabel || userId}?`,
+            async () => {
+                const res = await fetch(removeEmailEndpoint(emailId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Confirm-Action': 'confirm',
+                    },
+                });
+                if (!res.ok) {
+                    toast.error('Failed to remove email address.');
+                    return;
+                }
+                await loadEmails();
+                toast.success('Email address removed.');
+            },
+        );
+    }
+
     async function revokePasskeyRegistration(credentialId: string) {
         if (!hasTargetUser()) {
             return;
@@ -258,6 +351,7 @@
         loadedState = state;
         void loadRegistrationLink();
         void loadRegisteredPasskeys();
+        void loadEmails();
     });
 
     $effect(() => {
@@ -268,6 +362,8 @@
         loadedState = '';
         registrationLink = null;
         registeredPasskeys = [];
+        registeredEmails = [];
+        newEmail = '';
     });
 </script>
 
@@ -372,6 +468,50 @@
                         No active passkey registrations.
                     </div>
                 {/if}
+            </div>
+
+            <div class="space-y-2 border rounded-md p-3">
+                <div class="text-sm font-medium">Email Addresses</div>
+                {#if registeredEmails.length}
+                    {#each registeredEmails as entry (entry.id)}
+                        <div class="border rounded p-2 text-xs space-y-1">
+                            <div class="font-medium break-all"
+                                >{entry.email}</div>
+                            <div class="text-muted-foreground">
+                                Added: {formatPasskeyCreatedAt(entry.createdAt)}
+                            </div>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onclick={() =>
+                                    removeEmail(entry.id, entry.email)}>
+                                Remove
+                            </Button>
+                        </div>
+                    {/each}
+                {:else}
+                    <div class="text-xs text-muted-foreground">
+                        No email addresses registered.
+                    </div>
+                {/if}
+                <div class="flex gap-2 pt-1">
+                    <Input
+                        type="email"
+                        placeholder="Add email address"
+                        bind:value={newEmail}
+                        disabled={emailWorking}
+                        onkeydown={(e) => {
+                            if (e.key === 'Enter') addEmail();
+                        }} />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={emailWorking || !newEmail.trim()}
+                        onclick={addEmail}>
+                        Add
+                    </Button>
+                </div>
             </div>
         </div>
     </Dialog.Content>

@@ -429,3 +429,56 @@ WHERE role = 'admin';
 
 -- name: EnableAdminRemovalOverride :exec
 SELECT set_config('app.allow_remove_last_admin', 'on', true);
+
+-- name: InsertUserEmail :exec
+INSERT INTO user_emails (user_id, email)
+VALUES ($1, $2)
+ON CONFLICT (user_id, email) DO NOTHING;
+
+-- name: DeleteUserEmail :exec
+DELETE FROM user_emails
+WHERE user_id = $1
+    AND email = $2;
+
+-- name: ListUserEmails :many
+SELECT id, user_id, email, created_at
+FROM user_emails
+WHERE user_id = $1
+ORDER BY created_at ASC;
+
+-- name: GetUserByEmail :one
+SELECT users.id, users.name
+FROM users
+INNER JOIN user_emails ON user_emails.user_id = users.id
+WHERE LOWER(user_emails.email) = LOWER($1)
+LIMIT 1;
+
+-- name: CreateMagicLink :one
+INSERT INTO magic_links (token_hash, user_id, expires_at)
+VALUES ($1, $2, $3)
+RETURNING id, token_hash, user_id, created_at, expires_at, used_at;
+
+-- name: GetActiveMagicLinkByTokenHash :one
+SELECT id, token_hash, user_id, created_at, expires_at, used_at
+FROM magic_links
+WHERE token_hash = $1
+    AND used_at IS NULL
+    AND expires_at > NOW();
+
+-- name: ConsumeMagicLink :exec
+UPDATE magic_links
+SET used_at = NOW()
+WHERE id = $1
+    AND used_at IS NULL;
+
+-- name: DeleteMagicLinksForUser :exec
+DELETE FROM magic_links
+WHERE user_id = $1
+    AND used_at IS NULL;
+
+-- name: GetLatestMagicLinkForUser :one
+SELECT id, token_hash, user_id, created_at, expires_at, used_at
+FROM magic_links
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 1;

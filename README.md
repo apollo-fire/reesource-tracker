@@ -65,11 +65,6 @@ docker compose pull app
 docker compose up -d app
 ```
 
-### Notes
-
-- Change the PostgreSQL password before deploying.
-- Do not set `DEV=true` in production.
-
 ## Development Guide
 
 For development, build and run the backend and frontend locally from source.
@@ -101,6 +96,20 @@ For development, build and run the backend and frontend locally from source.
    - `DEV=true`: Enables development mode, which proxies frontend requests to the Vite dev server (running on port 5173). In production mode (when `DEV` is not set), the backend serves static files from the `client` directory.
 
    - `DATABASE_URL`: Connection string for the PostgreSQL database.
+
+   - `MAGIC_LINK_WEBHOOK_URL` _(optional)_: Enables the email (magic link) authentication method. When set, the server `POST`s a JSON payload to this URL whenever a sign-in link is requested:
+
+     ```json
+     {
+       "email": "user@example.com",
+       "name": "User Name",
+       "login_url": "https://your-app/app?magic_token=<token>"
+     }
+     ```
+
+     If this variable is not set, the email auth method is disabled and the `/api/auth/email/*` endpoints return an error.
+
+   - `SESSION_SECRET` _(optional)_: Secret used to sign session cookies. A random value is generated on startup if not provided — set this explicitly in production to preserve sessions across restarts.
 
 3. **Database setup:**
    - Configure the `DATABASE_URL` in the `.env` file as shown above.
@@ -203,7 +212,6 @@ The project uses Testcontainers for integration testing with PostgreSQL.
    ```powershell
    go test ./... -v
    ```
-
 ## Usage of SQLC
 
 - SQLC reads SQL queries from `database/query.sql` and generates Go code for type-safe database access.
@@ -212,13 +220,15 @@ The project uses Testcontainers for integration testing with PostgreSQL.
 
 ## Project Structure
 
-- `main.go` - Entry point for the Go backend
-- `api/` - API routes and handlers
-- `lib/database/` - Database models, query code, and wrappers
-- `client/` - Frontend (Svelte + Bun)
-  - `src/` - Main source code for the frontend
-    - `lib/` - Shared frontend utilities and components
-      - `components/` - Reusable Svelte components (UI, forms, etc.)
-  - `public/` - Static assets served by the frontend
-- `database/` - Database migrations (PostgreSQL) and data storage
-- `build/` - Compiled binaries and static build outputs
+- `main.go` — Entry point for the Go backend
+- `api/` — API routes and handlers
+  - `auth/` — Authentication sub-packages (passkeys, emails, assignmentlinks, bootstrap)
+  - `middleware/` — Session parsing and role enforcement
+- `lib/` — Business logic and shared helpers (no HTTP dependencies)
+  - `auth/` — Session, passkey, magic link, and response-mapping logic
+  - `database/` — sqlc-generated models and query wrappers
+- `client/` — Frontend (Svelte 5 + Bun)
+  - `src/lib/` — Shared utilities and components
+  - `src/views/` — Page-level Svelte views
+- `database/` — SQL migrations and query definitions
+- `build/` — Compiled binaries and static build outputs

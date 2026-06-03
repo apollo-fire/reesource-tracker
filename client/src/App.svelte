@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { toast } from 'svelte-sonner';
 
     import { AppStore, UpdateAppStore } from '$lib/components/app_store';
     import UserMenu from '$lib/components/auth/user_menu.svelte';
@@ -116,6 +117,25 @@
     }
 
     onMount(async () => {
+        // Consume a magic sign-in token before checking session state.
+        const initParams = new URLSearchParams(window.location.search);
+        const magicToken = initParams.get('magic_token');
+        let magicTokenFailed = false;
+        if (magicToken) {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('magic_token');
+            window.history.replaceState({}, '', cleanUrl.toString());
+
+            const res = await fetch('/api/auth/email/login/consume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: magicToken }),
+            });
+            if (!res.ok) {
+                magicTokenFailed = true;
+            }
+        }
+
         await refreshAuthState();
 
         if (window.location.search.includes('sample')) {
@@ -135,6 +155,10 @@
         }
 
         authReady = true;
+
+        if (magicTokenFailed) {
+            toast.error('Sign-in link was invalid or has already been used.');
+        }
     });
 
     $effect(() => {
