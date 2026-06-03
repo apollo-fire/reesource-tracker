@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"reesource-tracker/lib/auth"
 	libauth "reesource-tracker/lib/auth"
 	"reesource-tracker/lib/database"
 
@@ -32,7 +31,7 @@ func setSessionCookieValue(c *gin.Context, token string) {
 		Path:     "/",
 		MaxAge:   sessionDuration,
 		HttpOnly: true,
-		Secure:   auth.IsSecureRequest(c),
+		Secure:   libauth.IsSecureRequest(c),
 		SameSite: http.SameSiteLaxMode,
 	})
 }

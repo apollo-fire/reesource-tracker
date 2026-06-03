@@ -311,7 +311,7 @@ func getSession(c *gin.Context) {
 }
 
 func logout(c *gin.Context) {
-	c.SetCookie(middleware.SessionCookieName, "", -1, "/", "", auth.IsSecureRequest(c), true)
+	c.SetCookie(middleware.SessionCookieName, "", -1, "/", "", libauth.IsSecureRequest(c), true)
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
