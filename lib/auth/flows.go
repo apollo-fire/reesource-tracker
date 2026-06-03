@@ -161,7 +161,7 @@ func FinishRegistration(ctx context.Context, in FinishRegistrationInput) ([]byte
 		UserID:       challenge.UserID.V,
 		PublicKey:    publicKey,
 		SignCounter:  0,
-		Column5:      transportBytes,
+		Transports:   transportBytes,
 		Label:        sql.NullString{String: label, Valid: true},
 	}); err != nil {
 		return nil, err

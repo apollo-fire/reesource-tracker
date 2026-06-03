@@ -56,7 +56,7 @@ func main() {
 		Action:      "fallback_triggered",
 		TargetType:  "system",
 		TargetID:    sql.NullString{String: "admin_roles", Valid: true},
-		Column5:     payload,
+		Metadata:    payload,
 	}); err != nil {
 		_ = tx.Rollback()
 		log.Fatal(err)

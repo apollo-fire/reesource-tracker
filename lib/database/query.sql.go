@@ -654,7 +654,7 @@ type InsertAuditLogParams struct {
 	Action      string
 	TargetType  string
 	TargetID    sql.NullString
-	Column5     json.RawMessage
+	Metadata    json.RawMessage
 }
 
 func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error {
@@ -663,7 +663,7 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 		arg.Action,
 		arg.TargetType,
 		arg.TargetID,
-		arg.Column5,
+		arg.Metadata,
 	)
 	return err
 }
@@ -715,7 +715,7 @@ INSERT INTO passkeys (
         label,
         revoked_at
 )
-VALUES ($1, $2, $3, $4, $5::jsonb, $6, NULL)
+VALUES ($1, $2, $3, $4, $6::jsonb, $5, NULL)
 ON CONFLICT (credential_id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
         public_key = EXCLUDED.public_key,
@@ -730,8 +730,8 @@ type InsertPasskeyParams struct {
 	UserID       []byte
 	PublicKey    []byte
 	SignCounter  int64
-	Column5      json.RawMessage
 	Label        sql.NullString
+	Transports   json.RawMessage
 }
 
 func (q *Queries) InsertPasskey(ctx context.Context, arg InsertPasskeyParams) error {
@@ -740,8 +740,8 @@ func (q *Queries) InsertPasskey(ctx context.Context, arg InsertPasskeyParams) er
 		arg.UserID,
 		arg.PublicKey,
 		arg.SignCounter,
-		arg.Column5,
 		arg.Label,
+		arg.Transports,
 	)
 	return err
 }

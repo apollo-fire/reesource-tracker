@@ -176,7 +176,7 @@ func AuditLog(ctx context.Context, actorUserID *[]byte, action, targetType, targ
 		Action:      action,
 		TargetType:  targetType,
 		TargetID:    sql.NullString{String: targetID, Valid: targetID != ""},
-		Column5:     payload,
+		Metadata:    payload,
 	})
 }
 

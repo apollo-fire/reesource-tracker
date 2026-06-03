@@ -235,7 +235,7 @@ INSERT INTO passkeys (
         label,
         revoked_at
 )
-VALUES ($1, $2, $3, $4, $5::jsonb, $6, NULL)
+VALUES ($1, $2, $3, $4, sqlc.arg(transports)::jsonb, $5, NULL)
 ON CONFLICT (credential_id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
         public_key = EXCLUDED.public_key,
@@ -403,7 +403,7 @@ WHERE expires_at <= NOW();
 
 -- name: InsertAuditLog :exec
 INSERT INTO audit_logs (actor_user_id, action, target_type, target_id, metadata)
-VALUES ($1, $2, $3, $4, $5::jsonb);
+VALUES ($1, $2, $3, $4, sqlc.arg(metadata)::jsonb);
 
 -- name: ListAuditLogs :many
 SELECT id, actor_user_id, action, target_type, target_id, metadata, created_at
