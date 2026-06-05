@@ -3,6 +3,7 @@ package sample_mods
 import (
 	"database/sql"
 	"net/http"
+	"reesource-tracker/api/middleware"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	"reesource-tracker/lib/id_helper"
@@ -28,6 +29,9 @@ func Routes(route *gin.RouterGroup) {
 }
 
 func addMod(c *gin.Context) {
+	if !middleware.EnsureAuthenticated(c) {
+		return
+	}
 	sampleID := c.Param("sample_id")
 	if sampleID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Sample ID is required"})
@@ -67,6 +71,9 @@ func addMod(c *gin.Context) {
 }
 
 func removeMod(c *gin.Context) {
+	if !middleware.EnsureAuthenticated(c) {
+		return
+	}
 	modID := c.Param("mod_id")
 	if modID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Mod ID is required"})

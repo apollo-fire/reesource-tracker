@@ -3,6 +3,7 @@ package products
 import (
 	"database/sql"
 	"net/http"
+	"reesource-tracker/api/middleware"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
 	id_helper "reesource-tracker/lib/id_helper"
@@ -28,6 +29,9 @@ func Routes(route *gin.RouterGroup) {
 
 // DELETE /product/:product_id
 func deleteProduct(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	productID := c.Param("product_id")
 	if productID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id required"})
@@ -48,6 +52,9 @@ func deleteProduct(c *gin.Context) {
 }
 
 func createProduct(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	var req struct {
 		Name            string  `json:"name"`
 		ParentProductID *string `json:"parent_product_id"`
@@ -116,6 +123,9 @@ func getProduct(c *gin.Context) {
 }
 
 func updateProduct(c *gin.Context) {
+	if !middleware.EnsureRole(c, "maintainer") {
+		return
+	}
 	productID := c.Param("product_id")
 	if productID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id required"})

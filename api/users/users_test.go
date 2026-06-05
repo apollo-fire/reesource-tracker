@@ -87,3 +87,42 @@ func TestDeleteUser_Success(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "deleted")
 }
+
+func TestGetUsers_ReturnsRoles(t *testing.T) {
+	mock_db.ResetMockDB()
+	database.Connection = mock_db.MockConnection
+	r := setupRouter()
+
+	// Create a user first so the list is non-empty.
+	body := map[string]string{"name": "Role Test User"}
+	jsonBody, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/user", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+
+	// Now list users and verify the Roles field is present and populated.
+	w2 := httptest.NewRecorder()
+	req2, _ := http.NewRequest("GET", "/api/users", nil)
+	r.ServeHTTP(w2, req2)
+	assert.Equal(t, 200, w2.Code)
+	var resp []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp))
+	assert.NotEmpty(t, resp)
+	for _, user := range resp {
+		rolesRaw, ok := user["Roles"]
+		assert.True(t, ok, "Roles key should be present")
+		roles, ok := rolesRaw.([]interface{})
+		assert.True(t, ok, "Roles should be a JSON array")
+		// createUser always assigns the 'user' role.
+		assert.NotEmpty(t, roles, "user should have at least one role")
+		roleStrings := make([]string, 0, len(roles))
+		for _, r := range roles {
+			s, isStr := r.(string)
+			assert.True(t, isStr, "each role should be a string")
+			roleStrings = append(roleStrings, s)
+		}
+		assert.Contains(t, roleStrings, "user", "newly created user should have 'user' role")
+	}
+}
