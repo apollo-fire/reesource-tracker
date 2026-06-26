@@ -21,6 +21,17 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
+func TestGetSample_NotFound(t *testing.T) {
+	r := setupRouter()
+	database.Connection = mock_db.MockConnection
+	w := httptest.NewRecorder()
+	// 1Z-4I-6T is a valid canonical base36 ID that does not exist in the empty test DB
+	req, _ := http.NewRequest("GET", "/api/sample/1Z-4I-6T", nil)
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 404, w.Code)
+	assert.Contains(t, w.Body.String(), "Sample not found")
+}
+
 func TestGetSample_InvalidID(t *testing.T) {
 	r := setupRouter()
 	database.Connection = mock_db.MockConnection

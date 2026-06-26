@@ -26,6 +26,15 @@ func ParseSampleID(sampleID string) ([4]byte, error) {
 		rawID[i] = byte(val)
 	}
 
+	// Round-trip validation: re-encode and compare to ensure the input is canonical
+	formatted, err := FormatSampleID(rawID[:])
+	if err != nil {
+		return [4]byte{}, fmt.Errorf("invalid sample ID format")
+	}
+	if strings.ToUpper(sampleID) != formatted {
+		return [4]byte{}, fmt.Errorf("invalid sample ID format: non-canonical representation")
+	}
+
 	return rawID, nil
 }
 

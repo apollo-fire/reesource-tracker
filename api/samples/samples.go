@@ -2,6 +2,7 @@ package samples
 
 import (
 	"database/sql"
+	"errors"
 	"math"
 	"net/http"
 	"reesource-tracker/api/samples/sample_mods"
@@ -10,7 +11,6 @@ import (
 	id_helper "reesource-tracker/lib/id_helper"
 	sampleid "reesource-tracker/lib/sample_id"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -48,26 +48,19 @@ func getSample(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Sample ID is required"})
 		return
 	}
-	// Expecting sampleID in the format "xx-xx-xx" (6 base36 chars, 3 pairs)
-	parts := strings.Split(sampleID, "-")
-	if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 || len(parts[2]) != 2 {
+	rawID, err := sampleid.ParseSampleID(sampleID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
 		return
-	}
-	// Convert base36 pairs to bytes
-	var rawID [4]byte
-	for i, part := range parts {
-		val, err := strconv.ParseUint(part, 36, 8)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
-			return
-		}
-		rawID[i] = byte(val)
 	}
 	RawSampleID := rawID[:]
 	res, err := database.Connection.GetSampleById(c, RawSampleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Sample not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -111,21 +104,10 @@ func updateSample(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Sample ID is required"})
 		return
 	}
-	// Expecting sampleID in the format "xx-xx-xx" (6 base36 chars, 3 pairs)
-	parts := strings.Split(strings.ToUpper(sampleID), "-")
-	if len(parts) != 3 || len(parts[0]) != 2 || len(parts[1]) != 2 || len(parts[2]) != 2 {
+	rawID, err := sampleid.ParseSampleID(sampleID)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
 		return
-	}
-	// Convert base36 pairs to bytes
-	var rawID [4]byte
-	for i, part := range parts {
-		val, err := strconv.ParseUint(part, 36, 8)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sample ID format"})
-			return
-		}
-		rawID[i] = byte(val)
 	}
 	RawSampleID := rawID[:]
 
