@@ -40,6 +40,32 @@ export function IDStringToBlob(sampleId: string): string {
     return btoa(String.fromCharCode(...bytes)).toUpperCase();
 }
 
+// Validates a Go-style sample ID (xx-xx-xx, base36) by checking the round-trip.
+// Returns true if the sample ID is valid and canonical.
+export function validateSampleID(sampleId: string): boolean {
+    const parts = sampleId.toUpperCase().split('-');
+    if (
+        parts.length !== 3 ||
+        parts[0].length !== 2 ||
+        parts[1].length !== 2 ||
+        parts[2].length !== 2
+    ) {
+        return false;
+    }
+    for (const part of parts) {
+        const val = parseInt(part, 36);
+        if (isNaN(val) || val < 0 || val > 255) {
+            return false;
+        }
+        // Round-trip check: re-encode the parsed value and compare
+        const canonical = val.toString(36).toUpperCase().padStart(2, '0');
+        if (canonical !== part) {
+            return false;
+        }
+    }
+    return true;
+}
+
 export function Base64UUIDToString(base_64_id: string): string {
     let uuidStr = '';
     if (base_64_id && base_64_id !== '') {
