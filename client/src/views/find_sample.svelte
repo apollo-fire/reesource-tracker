@@ -20,7 +20,9 @@
         if (new_sample.length == 6) {
             const assembled = `${new_sample.slice(0, 2)}-${new_sample.slice(2, 4)}-${new_sample.slice(4, 6)}`;
             if (!validateSampleID(assembled)) {
-                toast.error('Invalid sample ID. Please enter a valid base36 ID (e.g. 1Z-4I-6T).');
+                toast.error(
+                    'Invalid sample ID. Please enter a valid base36 ID (e.g. 1Z-4I-6T).',
+                );
                 new_sample = '';
                 return;
             }
