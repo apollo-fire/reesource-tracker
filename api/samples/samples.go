@@ -2,6 +2,7 @@ package samples
 
 import (
 	"database/sql"
+	"errors"
 	"math"
 	"net/http"
 	"reesource-tracker/api/samples/sample_mods"
@@ -55,7 +56,11 @@ func getSample(c *gin.Context) {
 	RawSampleID := rawID[:]
 	res, err := database.Connection.GetSampleById(c, RawSampleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Sample not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 

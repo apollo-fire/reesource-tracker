@@ -37,7 +37,7 @@ export function IDStringToBlob(sampleId: string): string {
     const b2 = parseInt(parts[2], 36);
     const b3 = 0; // unused, for compatibility with Go's 4-byte array
     const bytes = new Uint8Array([b0, b1, b2, b3]);
-    return btoa(String.fromCharCode(...bytes)).toUpperCase();
+    return btoa(String.fromCharCode(...bytes));
 }
 
 // Validates a Go-style sample ID (xx-xx-xx, base36) by checking the round-trip.

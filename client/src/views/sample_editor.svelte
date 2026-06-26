@@ -27,6 +27,7 @@
     let add_mod_error = $state('');
     let product_issue = $state('');
     let owner_id = $state('');
+    let fetch_error = $state('');
 
     AppStore.subscribe((state) => {
         const this_sample_new = state.samples.find((s) => s.id === sample.id);
@@ -45,6 +46,7 @@
         // Fetch sample data
         const res = await fetch(`/api/sample/${new_sample_id}`);
         if (res.ok) {
+            fetch_error = '';
             const json_data = await res.json();
             sample = new Sample(
                 { ...json_data.sample, mods: json_data.mods },
@@ -56,7 +58,9 @@
             sample_state = sample.state || '';
             owner_id = sample.Owner?.id || '';
             product_issue = sample.productIssue || '';
-        } else {
+        } else if (res.status === 404) {
+            // Sample does not exist yet — show empty editor for creation
+            fetch_error = '';
             sample = new Sample(
                 {
                     ID: IDStringToBlob(new_sample_id),
@@ -65,6 +69,10 @@
                 AppStore,
             );
             sample_id = new_sample_id;
+        } else {
+            // Invalid ID (400) or server error (500) — do not show the editor
+            const body = await res.json().catch(() => ({ error: 'Unknown error' }));
+            fetch_error = body.error || `Request failed (${res.status})`;
         }
     }
 
@@ -124,6 +132,21 @@
     onMount(fetchSample);
 </script>
 
+{#if fetch_error}
+    <div class="flex flex-col gap-4 p-4 min-h-full items-center justify-center">
+        <Card.Root class="max-w-md w-full">
+            <Card.Header>
+                <Card.Title>Sample Not Found</Card.Title>
+                <Card.Description>{fetch_error}</Card.Description>
+            </Card.Header>
+            <Card.Content>
+                <Button
+                    variant="outline"
+                    onclick={() => history.back()}>Go Back</Button>
+            </Card.Content>
+        </Card.Root>
+    </div>
+{:else}
 <form
     onsubmit={saveSample}
     class="flex flex-col gap-4 p-4 min-h-full max-h-full overflow-auto">
@@ -298,3 +321,4 @@
         </Card.Content>
     </Card.Root>
 </form>
+{/if}
