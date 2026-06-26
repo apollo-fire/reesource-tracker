@@ -136,9 +136,7 @@
     <div class="flex flex-col gap-4 p-4 min-h-full items-center justify-center">
         <Card.Root class="max-w-md w-full">
             <Card.Header>
-                <Card.Title>Sample Not Found</Card.Title>
-                <Card.Description>{fetch_error}</Card.Description>
-            </Card.Header>
+                <Card.Title>Unable to load sample</Card.Title>
             <Card.Content>
                 <Button
                     variant="outline"
