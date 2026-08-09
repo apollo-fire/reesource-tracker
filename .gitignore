@@ -1,5 +1,6 @@
 **/build/*
 **/node_modules/*
+client/package-lock.json
 **/*.sqlite
 .env
 **/*.sqlite-**

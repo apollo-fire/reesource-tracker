@@ -7,11 +7,17 @@ import { SampleState } from '$lib/components/sample';
 export class User {
     public id: string;
     public name: string;
+    public roles: string[];
     private app_store: Writable<AppData>;
     constructor(data: Record<string, unknown>, app_store: Writable<AppData>) {
         this.id =
             typeof data.ID === 'string' ? Base64UUIDToString(data.ID) : '';
         this.name = typeof data.Name === 'string' ? data.Name : '';
+        this.roles =
+            Array.isArray(data.Roles) &&
+            data.Roles.every((r) => typeof r === 'string')
+                ? (data.Roles as string[])
+                : [];
         this.app_store = app_store;
     }
 

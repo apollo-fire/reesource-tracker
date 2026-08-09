@@ -14,3 +14,7 @@ sql:
           - db_type: "bytea"
             nullable: true
             go_type: "database/sql.Null[[]byte]"
+          - db_type: "pg_catalog._text"
+            go_type:
+              import: "github.com/lib/pq"
+              type: "StringArray"
