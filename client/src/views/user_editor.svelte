@@ -46,19 +46,6 @@
         updateTimeouts.set(user.id, timeout);
     }
 
-    async function addUserRow() {
-        const res = await fetch('/api/user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: '' }),
-        });
-        if (!res.ok) {
-            toast.error('Failed to add user.');
-            return;
-        }
-        toast.success('User added.');
-    }
-
     async function deleteUser(user: User) {
         console.log(user);
         const res = await fetch(`/api/user/${user.id}`, { method: 'DELETE' });
@@ -135,7 +122,6 @@
             </div>
         </div>
         <div class="mt-4 w-full flex flex-row self-end justify-end">
-            <Button type="button" onclick={addUserRow}>Add User</Button>
         </div>
     </Card.Content>
 </Card.Root>

@@ -2,6 +2,31 @@
 
 Reesource Tracker is a full-stack application for tracking samples, products, and locations. It uses Go for the backend, Bun (with Svelte) for the frontend, and SQLC for type-safe database access.
 
+## Configuration
+
+The application reads `config/app.yaml` by default. Create this file before starting the backend or deploying with Docker.
+
+```yaml
+# Public URL of the application, without a trailing slash.
+base_url: "https://reesource-tracker.example.com"
+oidc:
+  # OIDC issuer URL.
+  issuer_url: "https://keycloak.example.com/realms/my-realm"
+  # OIDC client ID.
+  client_id: "reesource-tracker"
+  # OIDC client secret, when required by the provider.
+  client_secret: "change-me"
+  # Dot-notation path to the groups or roles claim. Defaults to "groups".
+  role_claim_path: "roles"
+  # Optional mapping from OIDC claim values to application roles.
+  role_map:
+    "tracker-admin": "admin"
+    "tracker-maintainer": "maintainer"
+    "tracker-user": "user"
+```
+
+Keep the configuration file out of source control because it may contain credentials.
+
 ## Deployment Guide
 
 The easiest way to deploy is by using the provided docker image. The CI workflow publishes the production image to GitHub Container Registry as `ghcr.io/apollo-fire/reesource-tracker/reesource-tracker:latest`.
@@ -41,6 +66,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://reesource_tracker:change-me@postgres:5432/reesource_tracker?sslmode=disable
+    volumes:
+      - ./app.yaml:/app/config/app.yaml:ro
     ports:
       - "80:80"
 
@@ -68,6 +95,7 @@ docker compose up -d app
 ### Notes
 
 - Change the PostgreSQL password before deploying.
+- Create `app.yaml` alongside `compose.yml` on the deployment host before starting the stack, as described in the configuration section.
 - Do not set `DEV=true` in production.
 
 ## Development Guide
@@ -98,12 +126,12 @@ For development, build and run the backend and frontend locally from source.
    DEV=true
    DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=disable
    ```
-   ```USER```: Username e.g. ```postgresql```  
-   ```PASSWORD```: User password  
-   ```HOST```: Host address, use ```127.0.0.1``` for the same host as the server
-   ```PORT```: As configured in the postgres database, default ```5432```  
-   ```DATABASE```: Database name, e.g. ```postgres```  
 
+   `USER`: Username e.g. `postgresql`  
+   `PASSWORD`: User password  
+   `HOST`: Host address, use `127.0.0.1` for the same host as the server
+   `PORT`: As configured in the postgres database, default `5432`  
+   `DATABASE`: Database name, e.g. `postgres`
    - `DEV=true`: Enables development mode, which proxies frontend requests to the Vite dev server (running on port 5173). In production mode (when `DEV` is not set), the backend serves static files from the `client` directory.
 
    - `DATABASE_URL`: Connection string for the PostgreSQL database.

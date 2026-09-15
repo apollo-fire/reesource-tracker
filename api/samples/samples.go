@@ -38,8 +38,11 @@ func Routes(route *gin.RouterGroup) {
 	route.GET("/samples", getSamples)
 	route.GET("/sample/:sample_id", getSample)
 	route.POST("/sample/:sample_id", updateSample)
-	route.GET("/generate_samples", generateUniqueSamples)
 	sample_mods.Routes(route.Group("/sample/:sample_id/mods"))
+}
+
+func MaintainerRoutes(route *gin.RouterGroup) {
+	route.GET("/generate_samples", generateUniqueSamples)
 }
 
 func getSample(c *gin.Context) {

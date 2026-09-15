@@ -9,6 +9,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 const addSampleMod = `-- name: AddSampleMod :exec
@@ -35,6 +37,36 @@ func (q *Queries) AddSampleMod(ctx context.Context, arg AddSampleModParams) erro
 	return err
 }
 
+const createSession = `-- name: CreateSession :exec
+INSERT INTO sessions (id, user_id, roles, oidc_sid, refresh_token, access_token_expires_at, expires_at, id_token)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type CreateSessionParams struct {
+	ID                   string
+	UserID               []byte
+	Roles                []string
+	OidcSid              sql.NullString
+	RefreshToken         sql.NullString
+	AccessTokenExpiresAt time.Time
+	ExpiresAt            time.Time
+	IDToken              sql.NullString
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
+	_, err := q.db.ExecContext(ctx, createSession,
+		arg.ID,
+		arg.UserID,
+		pq.Array(arg.Roles),
+		arg.OidcSid,
+		arg.RefreshToken,
+		arg.AccessTokenExpiresAt,
+		arg.ExpiresAt,
+		arg.IDToken,
+	)
+	return err
+}
+
 const deleteLocationByID = `-- name: DeleteLocationByID :exec
 DELETE FROM locations
 WHERE
@@ -54,6 +86,33 @@ WHERE
 
 func (q *Queries) DeleteProductByID(ctx context.Context, id []byte) error {
 	_, err := q.db.ExecContext(ctx, deleteProductByID, id)
+	return err
+}
+
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE id = $1
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, id)
+	return err
+}
+
+const deleteSessionByOIDCSID = `-- name: DeleteSessionByOIDCSID :exec
+DELETE FROM sessions WHERE oidc_sid = $1
+`
+
+func (q *Queries) DeleteSessionByOIDCSID(ctx context.Context, oidcSid sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, deleteSessionByOIDCSID, oidcSid)
+	return err
+}
+
+const deleteSessionsByUserID = `-- name: DeleteSessionsByUserID :exec
+DELETE FROM sessions WHERE user_id = $1
+`
+
+func (q *Queries) DeleteSessionsByUserID(ctx context.Context, userID []byte) error {
+	_, err := q.db.ExecContext(ctx, deleteSessionsByUserID, userID)
 	return err
 }
 
@@ -206,8 +265,29 @@ func (q *Queries) GetSampleById(ctx context.Context, id []byte) (Sample, error) 
 	return i, err
 }
 
+const getSessionByID = `-- name: GetSessionByID :one
+SELECT id, user_id, roles, oidc_sid, refresh_token, access_token_expires_at, expires_at, created_at, id_token FROM sessions WHERE id = $1 AND expires_at > NOW()
+`
+
+func (q *Queries) GetSessionByID(ctx context.Context, id string) (Session, error) {
+	row := q.db.QueryRowContext(ctx, getSessionByID, id)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		pq.Array(&i.Roles),
+		&i.OidcSid,
+		&i.RefreshToken,
+		&i.AccessTokenExpiresAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.IDToken,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name
+SELECT id, name, oidc_sub
 FROM
     users
 WHERE
@@ -217,12 +297,23 @@ WHERE
 func (q *Queries) GetUserByID(ctx context.Context, id []byte) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.OidcSub)
+	return i, err
+}
+
+const getUserByOIDCSub = `-- name: GetUserByOIDCSub :one
+SELECT id, name, oidc_sub FROM users WHERE oidc_sub = $1
+`
+
+func (q *Queries) GetUserByOIDCSub(ctx context.Context, oidcSub sql.NullString) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByOIDCSub, oidcSub)
+	var i User
+	err := row.Scan(&i.ID, &i.Name, &i.OidcSub)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, name
+SELECT id, name, oidc_sub
 FROM
     users
 ORDER BY
@@ -238,7 +329,7 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	var items []User
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.OidcSub); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -477,6 +568,23 @@ func (q *Queries) UpdateOrCreateSample(ctx context.Context, arg UpdateOrCreateSa
 	return i, err
 }
 
+const updateSessionTokens = `-- name: UpdateSessionTokens :exec
+UPDATE sessions
+SET refresh_token = $2, access_token_expires_at = $3
+WHERE id = $1
+`
+
+type UpdateSessionTokensParams struct {
+	ID                   string
+	RefreshToken         sql.NullString
+	AccessTokenExpiresAt time.Time
+}
+
+func (q *Queries) UpdateSessionTokens(ctx context.Context, arg UpdateSessionTokensParams) error {
+	_, err := q.db.ExecContext(ctx, updateSessionTokens, arg.ID, arg.RefreshToken, arg.AccessTokenExpiresAt)
+	return err
+}
+
 const upsertLocation = `-- name: UpsertLocation :exec
 INSERT INTO
     locations (id, name, description, parent_location_id)
@@ -553,4 +661,25 @@ type UpsertUserParams struct {
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 	_, err := q.db.ExecContext(ctx, upsertUser, arg.ID, arg.Name)
 	return err
+}
+
+const upsertUserByOIDCSub = `-- name: UpsertUserByOIDCSub :one
+INSERT INTO users (id, name, oidc_sub)
+VALUES ($1, $2, $3)
+ON CONFLICT (oidc_sub) WHERE oidc_sub IS NOT NULL DO UPDATE
+SET name = EXCLUDED.name
+RETURNING id, name, oidc_sub
+`
+
+type UpsertUserByOIDCSubParams struct {
+	ID      []byte
+	Name    string
+	OidcSub sql.NullString
+}
+
+func (q *Queries) UpsertUserByOIDCSub(ctx context.Context, arg UpsertUserByOIDCSubParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, upsertUserByOIDCSub, arg.ID, arg.Name, arg.OidcSub)
+	var i User
+	err := row.Scan(&i.ID, &i.Name, &i.OidcSub)
+	return i, err
 }

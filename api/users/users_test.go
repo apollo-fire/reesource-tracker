@@ -23,19 +23,6 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func TestCreateUser_Success(t *testing.T) {
-	r := setupRouter()
-	database.Connection = mock_db.MockConnection
-	body := map[string]string{"name": "Test User"}
-	jsonBody, _ := json.Marshal(body)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/user", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "success")
-}
-
 func TestGetUser_NotFound(t *testing.T) {
 	r := setupRouter()
 	database.Connection = mock_db.MockConnection

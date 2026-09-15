@@ -21,7 +21,11 @@ RUN apt-get update && apt-get install ca-certificates -y
 RUN update-ca-certificates
 COPY --from=go_builder /build/build .
 COPY client_built ./client
-RUN mkdir /app/database
+RUN mkdir /app/database && mkdir /app/config
 COPY --from=go_builder /build/migrations /app/migrations
+# Mount a real config file at /app/config/app.yaml at runtime, e.g.:
+#   docker run -v /host/path/app.yaml:/app/config/app.yaml:ro ...
+# or override the path via APP_CONFIG_PATH env var.
+VOLUME ["/app/config"]
 EXPOSE 80
 ENTRYPOINT ["/app/reesource-tracker"]

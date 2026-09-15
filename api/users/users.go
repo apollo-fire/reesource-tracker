@@ -7,7 +7,6 @@ import (
 	id_helper "reesource-tracker/lib/id_helper"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type UserResponse struct {
@@ -17,7 +16,6 @@ type UserResponse struct {
 
 func Routes(route *gin.RouterGroup) {
 	route.GET("/users", getUsers)
-	route.POST("/user", createUser)
 	route.GET("/user/:user_id", getUser)
 	route.POST("/user/:user_id", updateUser)
 	route.DELETE("/user/:user_id", deleteUser)
@@ -44,32 +42,6 @@ func deleteUser(c *gin.Context) {
 	sync.BroadcastEvent("users_updated", gin.H{})
 }
 
-func createUser(c *gin.Context) {
-	var req struct {
-		Name string `json:"name"`
-	}
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	new_uid, err := uuid.New().MarshalBinary()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate user ID"})
-		return
-	}
-	params := database.UpsertUserParams{
-		ID:   new_uid,
-		Name: req.Name,
-	}
-	err = database.Connection.UpsertUser(c, params)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "success"})
-	sync.BroadcastEvent("users_updated", gin.H{})
-}
-
 func getUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -86,11 +58,7 @@ func getUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	response := UserResponse{
-		ID:   user.ID,
-		Name: user.Name,
-	}
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, UserResponse{ID: user.ID, Name: user.Name})
 }
 
 func updateUser(c *gin.Context) {
@@ -111,11 +79,10 @@ func updateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
 		return
 	}
-	params := database.UpsertUserParams{
+	err := database.Connection.UpsertUser(c, database.UpsertUserParams{
 		ID:   binary_uuid,
 		Name: req.Name,
-	}
-	err := database.Connection.UpsertUser(c, params)
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -132,10 +99,7 @@ func getUsers(c *gin.Context) {
 	}
 	var responses []UserResponse
 	for _, user := range res {
-		responses = append(responses, UserResponse{
-			ID:   user.ID,
-			Name: user.Name,
-		})
+		responses = append(responses, UserResponse{ID: user.ID, Name: user.Name})
 	}
 	c.JSON(http.StatusOK, responses)
 }

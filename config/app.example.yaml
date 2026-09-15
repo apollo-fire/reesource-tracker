@@ -1,0 +1,15 @@
+# Externally-reachable root URL of this application (no trailing slash).
+base_url: "https://reesource-tracker.example.com"
+oidc:
+  issuer_url: "https://keycloak.example.com/realms/my-realm"
+  client_id: "reesource-tracker"
+  client_secret: "change-me"
+  # Dot-notation path to the roles/groups claim.
+  # Keycloak examples: "groups" (groups mapper), "realm_access.roles" (realm roles)
+  role_claim_path: "roles"
+  # Maps OIDC claim values to app roles (admin / maintainer / user).
+  # If empty, claim values are matched directly against role names.
+  role_map:
+    "tracker-admin": "admin"
+    "tracker-maintainer": "maintainer"
+    "tracker-user": "user"
