@@ -1,7 +1,7 @@
 -- Repoints every FK column referencing users(id) from legacy_id to target_id,
 -- then deletes the legacy user. Catalog-driven so future tables referencing
 -- users(id) are handled automatically without code changes.
-CREATE FUNCTION merge_users(target_id BYTEA, legacy_id BYTEA) RETURNS void AS $$
+CREATE OR REPLACE FUNCTION merge_users(target_id BYTEA, legacy_id BYTEA) RETURNS void AS $$
 DECLARE
     rec RECORD;
 BEGIN
