@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,8 +23,15 @@ import (
 
 const stateCookieName = "oidc_state"
 
+var configuredAppBaseURL string
+
 func Initialize(ctx context.Context, issuerURL, clientID, clientSecret, baseURL, roleClaimPath string, roleMap map[string]string) error {
-	redirectURL := strings.TrimRight(baseURL, "/") + "/api/auth/callback"
+	normalizedBaseURL, err := normalizeBaseURL(baseURL)
+	if err != nil {
+		return err
+	}
+	configuredAppBaseURL = normalizedBaseURL
+	redirectURL := configuredAppBaseURL + "/api/auth/callback"
 	return liboidc.Initialize(ctx, issuerURL, clientID, clientSecret, redirectURL, roleClaimPath, roleMap)
 }
 
@@ -129,7 +138,7 @@ func logout(c *gin.Context) {
 		_ = libauth.DeleteSession(c.Request.Context(), sessionID)
 	}
 	middleware.ClearSessionCookie(c)
-	postLogout := appBaseURL(c) + "/app"
+	postLogout := appBaseURL() + "/app"
 	c.Redirect(http.StatusFound, liboidc.Get().EndSessionURL(idToken, postLogout))
 }
 
@@ -219,9 +228,18 @@ func isSecure(c *gin.Context) bool {
 	return false
 }
 
-func appBaseURL(c *gin.Context) string {
-	if isSecure(c) {
-		return "https://" + c.Request.Host
+func appBaseURL() string {
+	return configuredAppBaseURL
+}
+
+func normalizeBaseURL(baseURL string) (string, error) {
+	baseURL = strings.TrimRight(baseURL, "/")
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid base_url: %w", err)
 	}
-	return "http://" + c.Request.Host
+	if parsed.Scheme == "" || parsed.Host == "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", fmt.Errorf("invalid base_url: %q", baseURL)
+	}
+	return baseURL, nil
 }
