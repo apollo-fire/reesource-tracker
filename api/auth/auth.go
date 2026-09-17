@@ -72,7 +72,13 @@ func callback(c *gin.Context) {
 		return
 	}
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name: stateCookieName, Value: "", Path: "/", MaxAge: -1,
+		Name:     stateCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isSecure(c),
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	oidcClient := liboidc.Get()
