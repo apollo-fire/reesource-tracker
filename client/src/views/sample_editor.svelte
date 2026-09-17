@@ -126,7 +126,7 @@
 
 <form
     onsubmit={saveSample}
-    class="flex flex-col gap-4 p-4 min-h-full max-h-full overflow-auto">
+    class="flex flex-col gap-4 min-h-full max-h-full overflow-auto">
     <div class="flex flex-row gap-6 w-full flex-wrap h-full overflow-auto grow">
         <Card.Root class="grow">
             <Card.Header>
