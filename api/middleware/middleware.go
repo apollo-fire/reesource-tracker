@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	libauth "reesource-tracker/lib/auth"
@@ -15,6 +16,8 @@ import (
 const (
 	sessionCookieName = "auth_session"
 )
+
+var sessionRefreshLocks sync.Map
 
 // AuthBypassed returns true in test mode or when AUTH_DISABLED=1, allowing
 // all auth checks to pass without a real session.
@@ -160,6 +163,25 @@ func hydrateSession(c *gin.Context) bool {
 
 	// Transparently refresh the access token when it has expired.
 	if time.Now().After(session.AccessTokenExpiresAt) {
+		unlock := lockSessionRefresh(sessionID)
+		defer unlock()
+
+		session, err = libauth.GetSession(c.Request.Context(), sessionID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				ClearSessionCookie(c)
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "session expired"})
+				return false
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "session lookup failed"})
+			return false
+		}
+		if !time.Now().After(session.AccessTokenExpiresAt) {
+			c.Set("auth_user_id", session.UserID)
+			c.Set("auth_roles", session.Roles)
+			return true
+		}
+
 		oidcClient := liboidc.Get()
 		if oidcClient == nil {
 			// OIDC not initialised; treat as unauthenticated.
@@ -181,6 +203,13 @@ func hydrateSession(c *gin.Context) bool {
 	c.Set("auth_user_id", session.UserID)
 	c.Set("auth_roles", session.Roles)
 	return true
+}
+
+func lockSessionRefresh(sessionID string) func() {
+	mu, _ := sessionRefreshLocks.LoadOrStore(sessionID, &sync.Mutex{})
+	mutex := mu.(*sync.Mutex)
+	mutex.Lock()
+	return mutex.Unlock
 }
 
 func currentRoles(c *gin.Context) ([]string, bool) {
