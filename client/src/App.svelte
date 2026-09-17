@@ -2,9 +2,12 @@
     import { onMount } from 'svelte';
 
     import { AppStore, UpdateAppStore } from '$lib/components/app_store';
+    import * as Avatar from '$lib/components/ui/avatar';
     import { Button } from '$lib/components/ui/button';
+    import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
     import { Toaster } from '$lib/components/ui/sonner/index.js';
     import * as Tabs from '$lib/components/ui/tabs';
+    import * as Tooltip from '$lib/components/ui/tooltip';
 
     import BulkApply from '$views/bulk_apply.svelte';
     import FindSample from '$views/find_sample.svelte';
@@ -71,144 +74,176 @@
 
     let bulk_apply_active = $derived($AppStore.currentPage === 'bulk_apply');
     let find_sample_active = $derived($AppStore.currentPage === 'find_sample');
+
+    let userInitials = $derived(
+        currentUserName
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((part) => part[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase(),
+    );
 </script>
 
-<div class="toaster-wrapper">
-    <Toaster position="bottom-center" />
-</div>
+<Tooltip.Provider>
+    <div class="toaster-wrapper">
+        <Toaster position="bottom-center" />
+    </div>
 
-{#if sessionLoading}
-    <!-- intentionally blank while session is resolved -->
-{:else if !authenticated}
-    <LoginView />
-{:else}
-    <main
-        class="w-full overflow-hidden p-6 flex flex-col justify-stretch overflow-hidden">
-        <div class="absolute top-2 right-4 flex items-center gap-3">
-            {#if currentUserName}
-                <span class="text-sm text-muted-foreground"
-                    >{currentUserName}</span>
-            {/if}
-            {#if currentUserRoles.length > 0}
-                <span class="text-xs text-muted-foreground opacity-60"
-                    >{currentUserRoles.join(', ')}</span>
-            {/if}
-            <Button variant="ghost" size="sm" onclick={logout}>Sign out</Button>
-        </div>
-        {#if $AppStore.currentPage === 'quick_actions'}
-            <div
-                class="flex flex-col gap-4 items-stretch w-full h-full justify-center p-2">
-                <Button
-                    size="lg"
-                    class="text-lg py-6"
-                    onclick={() => ($AppStore.currentPage = 'find_sample')}
-                    >Find Sample</Button>
-                <Button
-                    size="lg"
-                    class="text-lg py-6"
-                    onclick={() => ($AppStore.currentPage = 'bulk_apply')}
-                    >Bulk Apply</Button>
-                <Button
-                    size="lg"
-                    class="text-lg py-6"
-                    onclick={() => ($AppStore.currentPage = 'sample_list')}
-                    >Sample List</Button>
-                {#if isMaintainerOrAdmin}
+    {#if sessionLoading}
+        <!-- intentionally blank while session is resolved -->
+    {:else if !authenticated}
+        <LoginView />
+    {:else}
+        <main
+            class="w-full overflow-hidden px-6 py-2 flex flex-col justify-stretch overflow-hidden">
+            {#if $AppStore.currentPage === 'quick_actions'}
+                <div
+                    class="flex flex-col gap-4 items-stretch w-full h-full justify-center p-2">
                     <Button
                         size="lg"
                         class="text-lg py-6"
-                        onclick={() =>
-                            ($AppStore.currentPage = 'sample_code_generator')}
-                        >Provision Sample Codes</Button>
+                        onclick={() => ($AppStore.currentPage = 'find_sample')}
+                        >Find Sample</Button>
                     <Button
                         size="lg"
                         class="text-lg py-6"
-                        onclick={() => ($AppStore.currentPage = 'product_edit')}
-                        >Products</Button>
+                        onclick={() => ($AppStore.currentPage = 'bulk_apply')}
+                        >Bulk Apply</Button>
                     <Button
                         size="lg"
                         class="text-lg py-6"
-                        onclick={() =>
-                            ($AppStore.currentPage = 'location_edit')}
-                        >Locations</Button>
-                {/if}
-            </div>
-        {:else}
-            <Tabs.Root
-                bind:value={$AppStore.currentPage}
-                class="w-full grow flex flex-col h-full max-h-[100vh]">
-                <div class="max-w-full overflow-x-auto">
-                    <Tabs.List>
-                        <Tabs.Trigger value="find_sample" class="w-full"
-                            >Find Sample</Tabs.Trigger>
-                        <Tabs.Trigger value="bulk_apply" class="w-full"
-                            >Bulk Apply</Tabs.Trigger>
-                        <Tabs.Trigger value="sample_list"
-                            >Sample List</Tabs.Trigger>
-                        {#if isMaintainerOrAdmin}
-                            <Tabs.Trigger value="sample_code_generator"
-                                >Provision Sample Codes</Tabs.Trigger>
-                            <Tabs.Trigger value="product_edit"
-                                >Products</Tabs.Trigger>
-                            <Tabs.Trigger value="location_edit"
-                                >Locations</Tabs.Trigger>
-                        {/if}
-                        {#if isAdmin}
-                            <Tabs.Trigger value="user_edit">Users</Tabs.Trigger>
-                        {/if}
-                        {#if window.location.search.split('sample_id=').length >= 2}
-                            <Tabs.Trigger value="sample_edit"
-                                >Sample {window.location.search.split(
-                                    'sample_id=',
-                                )[1]}</Tabs.Trigger>
-                        {/if}
-                    </Tabs.List>
+                        onclick={() => ($AppStore.currentPage = 'sample_list')}
+                        >Sample List</Button>
+                    {#if isMaintainerOrAdmin}
+                        <Button
+                            size="lg"
+                            class="text-lg py-6"
+                            onclick={() =>
+                                ($AppStore.currentPage =
+                                    'sample_code_generator')}
+                            >Provision Sample Codes</Button>
+                        <Button
+                            size="lg"
+                            class="text-lg py-6"
+                            onclick={() =>
+                                ($AppStore.currentPage = 'product_edit')}
+                            >Products</Button>
+                        <Button
+                            size="lg"
+                            class="text-lg py-6"
+                            onclick={() =>
+                                ($AppStore.currentPage = 'location_edit')}
+                            >Locations</Button>
+                    {/if}
                 </div>
+            {:else}
+                <Tabs.Root
+                    bind:value={$AppStore.currentPage}
+                    class="w-full grow flex flex-col h-full max-h-[100vh]">
+                    <div
+                        class="max-w-full overflow-x-auto flex flex-row justify-between">
+                        <Tabs.List>
+                            <Tabs.Trigger value="find_sample" class="w-full"
+                                >Find Sample</Tabs.Trigger>
+                            <Tabs.Trigger value="bulk_apply" class="w-full"
+                                >Bulk Apply</Tabs.Trigger>
+                            <Tabs.Trigger value="sample_list"
+                                >Sample List</Tabs.Trigger>
+                            {#if isMaintainerOrAdmin}
+                                <Tabs.Trigger value="sample_code_generator"
+                                    >Provision Sample Codes</Tabs.Trigger>
+                                <Tabs.Trigger value="product_edit"
+                                    >Products</Tabs.Trigger>
+                                <Tabs.Trigger value="location_edit"
+                                    >Locations</Tabs.Trigger>
+                            {/if}
+                            {#if isAdmin}
+                                <Tabs.Trigger value="user_edit"
+                                    >Users</Tabs.Trigger>
+                            {/if}
+                            {#if window.location.search.split('sample_id=').length >= 2}
+                                <Tabs.Trigger value="sample_edit"
+                                    >Sample {window.location.search.split(
+                                        'sample_id=',
+                                    )[1]}</Tabs.Trigger>
+                            {/if}
+                        </Tabs.List>
+                        <DropdownMenu.Root>
+                            <DropdownMenu.Trigger>
+                                <Avatar.Root class="cursor-pointer">
+                                    <Avatar.Fallback
+                                        >{userInitials}</Avatar.Fallback>
+                                </Avatar.Root>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Content align="end">
+                                <DropdownMenu.Group>
+                                    {#if currentUserName}
+                                        <DropdownMenu.Label
+                                            >{currentUserName}</DropdownMenu.Label>
+                                    {/if}
+                                    {#if currentUserRoles.length > 0}
+                                        <DropdownMenu.Separator />
+                                        <DropdownMenu.Label
+                                            class="text-xs text-muted-foreground font-normal"
+                                            >{currentUserRoles.join(
+                                                ', ',
+                                            )}</DropdownMenu.Label>
+                                    {/if}
+                                    <DropdownMenu.Separator />
+                                    <DropdownMenu.Item onclick={logout}
+                                        >Sign out</DropdownMenu.Item>
+                                </DropdownMenu.Group>
+                            </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                    </div>
 
-                <Tabs.Content
-                    value="find_sample"
-                    class="h-full max-h-full overflow-auto">
-                    <FindSample bind:active={find_sample_active} />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="bulk_apply"
-                    class="h-full max-h-full overflow-auto">
-                    <BulkApply bind:active={bulk_apply_active} />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="sample_list"
-                    class="h-full max-h-full overflow-auto">
-                    <SampleList />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="product_edit"
-                    class="h-full max-h-full overflow-auto">
-                    <ProductEditor />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="sample_edit"
-                    class="h-full max-h-full overflow-auto">
-                    <SampleEditor />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="location_edit"
-                    class="h-full max-h-full overflow-auto">
-                    <LocationEditor />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="sample_code_generator"
-                    class="h-full max-h-full overflow-auto">
-                    <SampleCodeGenerator />
-                </Tabs.Content>
-                <Tabs.Content
-                    value="user_edit"
-                    class="h-full max-h-full overflow-auto">
-                    <UserEditor />
-                </Tabs.Content>
-            </Tabs.Root>
-        {/if}
-    </main>
-{/if}
+                    <Tabs.Content
+                        value="find_sample"
+                        class="h-full max-h-full overflow-auto">
+                        <FindSample bind:active={find_sample_active} />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="bulk_apply"
+                        class="h-full max-h-full overflow-auto">
+                        <BulkApply bind:active={bulk_apply_active} />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="sample_list"
+                        class="h-full max-h-full overflow-auto">
+                        <SampleList />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="product_edit"
+                        class="h-full max-h-full overflow-auto">
+                        <ProductEditor />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="sample_edit"
+                        class="h-full max-h-full overflow-auto">
+                        <SampleEditor />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="location_edit"
+                        class="h-full max-h-full overflow-auto">
+                        <LocationEditor />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="sample_code_generator"
+                        class="h-full max-h-full overflow-auto">
+                        <SampleCodeGenerator />
+                    </Tabs.Content>
+                    <Tabs.Content
+                        value="user_edit"
+                        class="h-full max-h-full overflow-auto">
+                        <UserEditor />
+                    </Tabs.Content>
+                </Tabs.Root>
+            {/if}
+        </main>
+    {/if}
+</Tooltip.Provider>
 
 <style>
     main {

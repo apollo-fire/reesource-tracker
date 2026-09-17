@@ -12,7 +12,6 @@
     import * as Card from '$lib/components/ui/card';
     import { Checkbox } from '$lib/components/ui/checkbox/index.js';
     import { Input } from '$lib/components/ui/input';
-    import * as InputOTP from '$lib/components/ui/input-otp';
     import { Label } from '$lib/components/ui/label';
     import { Separator } from '$lib/components/ui/separator';
 
@@ -56,31 +55,25 @@
     let selectedVideoInput: string = $state('');
 
     // Manual sample code entry
-    let manualSample: string = $state('');
     let manualSampleError: string = $state('');
 
-    $effect(() => {
-        if (manualSample.length === 6) {
-            const formatted =
-                `${manualSample.slice(0, 2)}-${manualSample.slice(2, 4)}-${manualSample.slice(4, 6)}`.toUpperCase();
-            if (/^[0-9A-Z]{2}-[0-9A-Z]{2}-[0-9A-Z]{2}$/.test(formatted)) {
-                // Only add if not already present (case-insensitive)
-                const exists = scannedIds.some(
-                    (id) => id.toUpperCase() === formatted,
-                );
-                if (!exists) {
-                    scannedIds = [...scannedIds, formatted];
-                    toast.success(`Added sample ID: ${formatted}`);
-                    manualSampleError = '';
-                } else {
-                    manualSampleError = 'Sample ID already added.';
-                }
+    function handleManualSampleId(sampleId: string) {
+        if (/^[0-9A-Z]{2}-[0-9A-Z]{2}-[0-9A-Z]{2}$/.test(sampleId)) {
+            // Only add if not already present (case-insensitive)
+            const exists = scannedIds.some(
+                (id) => id.toUpperCase() === sampleId,
+            );
+            if (!exists) {
+                scannedIds = [...scannedIds, sampleId];
+                toast.success(`Added sample ID: ${sampleId}`);
+                manualSampleError = '';
             } else {
-                manualSampleError = 'Invalid sample code format.';
+                manualSampleError = 'Sample ID already added.';
             }
-            manualSample = '';
+        } else {
+            manualSampleError = 'Invalid sample code format.';
         }
-    });
+    }
 
     let updateProduct = $state(false);
     let updateLocation = $state(false);
@@ -220,55 +213,16 @@
 
 <div class="flex flex-col gap-8 min-h-full">
     <div class=" flex flex-row flex-wrap gap-6 justify-stretch items-stretch">
-        <Card.Root class="flex-grow">
-            <Card.Header>
-                <Card.Title>Add Sample</Card.Title>
-                <Card.Description>
-                    Scan a QR code or manually enter a sample ID to add it to
-                    the list.
-                </Card.Description>
-            </Card.Header>
-            <Card.Content>
-                <QRScanner
-                    containerId="qr-reader-bulk"
-                    bind:selectedVideoInput={selectedVideoInput}
-                    onQrCodeScan={handleQRScan}
-                    autoStart={active} />
-                <div class="self-center mt-12 flex flex-col items-center gap-6">
-                    <Label for="manual-id-input"
-                        >Or manually enter the sample ID</Label>
-                    <InputOTP.Root
-                        maxlength={6}
-                        bind:value={manualSample}
-                        id="manual-id-input"
-                        disabled={modLoading}>
-                        {#snippet children({ cells })}
-                            <InputOTP.Group>
-                                {#each cells.slice(0, 2) as cell (cell)}
-                                    <InputOTP.Slot cell={cell} />
-                                {/each}
-                            </InputOTP.Group>
-                            <InputOTP.Separator />
-                            <InputOTP.Group>
-                                {#each cells.slice(2, 4) as cell (cell)}
-                                    <InputOTP.Slot cell={cell} />
-                                {/each}
-                            </InputOTP.Group>
-                            <InputOTP.Separator />
-                            <InputOTP.Group>
-                                {#each cells.slice(4, 6) as cell (cell)}
-                                    <InputOTP.Slot cell={cell} />
-                                {/each}
-                            </InputOTP.Group>
-                        {/snippet}
-                    </InputOTP.Root>
-                    {#if manualSampleError}
-                        <span class="text-red-500 text-sm"
-                            >{manualSampleError}</span>
-                    {/if}
-                </div>
-            </Card.Content>
-        </Card.Root>
+        <div class="min-w-2xl">
+            <QRScanner
+                containerId="qr-reader-bulk"
+                bind:selectedVideoInput={selectedVideoInput}
+                onQrCodeScan={handleQRScan}
+                onManualSampleId={handleManualSampleId}
+                manualSampleError={manualSampleError}
+                manualIdInputDisabled={modLoading}
+                autoStart={active} />
+        </div>
 
         <Card.Root class="flex-grow">
             <Card.Header>
