@@ -162,6 +162,11 @@
                     label="English"
                     default />
             </video>
+        {:else}
+            <div
+                class="h-full w-full flex items-center justify-center bg-gray-100">
+                <p class="text-gray-500">Camera is off</p>
+            </div>
         {/if}
     </div>
     <p class="text-sm text-gray-500 mt-6">
