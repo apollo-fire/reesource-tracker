@@ -189,6 +189,9 @@ ON CONFLICT (oidc_sub) WHERE oidc_sub IS NOT NULL DO UPDATE
 SET name = EXCLUDED.name
 RETURNING *;
 
+-- name: MergeUsers :exec
+SELECT merge_users($1, $2);
+
 -- name: CreateSession :exec
 INSERT INTO sessions (id, user_id, roles, oidc_sid, refresh_token, access_token_expires_at, expires_at, id_token)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
