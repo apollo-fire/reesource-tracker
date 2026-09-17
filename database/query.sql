@@ -198,7 +198,7 @@ SELECT * FROM sessions WHERE id = $1 AND expires_at > NOW();
 
 -- name: UpdateSessionTokens :exec
 UPDATE sessions
-SET refresh_token = $2, access_token_expires_at = $3
+SET id_token = $2, refresh_token = $3, access_token_expires_at = $4, roles = $5
 WHERE id = $1;
 
 -- name: DeleteSession :exec

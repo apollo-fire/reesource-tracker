@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"os"
@@ -196,13 +197,29 @@ func hydrateSession(c *gin.Context) bool {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "session expired"})
 			return false
 		}
-		_ = libauth.UpdateSessionTokens(c.Request.Context(), sessionID,
-			newTokens.RefreshToken, newTokens.AccessTokenExpiry)
+		if err := applyRefreshedSession(c.Request.Context(), sessionID, session, newTokens,
+			oidcClient.RoleClaimPath(), oidcClient.RoleMap()); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "session refresh failed"})
+			return false
+		}
 	}
 
 	c.Set("auth_user_id", session.UserID)
 	c.Set("auth_roles", session.Roles)
 	return true
+}
+
+func applyRefreshedSession(ctx context.Context, sessionID string, session *libauth.Session, newTokens *liboidc.TokenSet, roleClaimPath string, roleMap map[string]string) error {
+	roles := liboidc.ExtractRoles(newTokens.RawClaims, roleClaimPath, roleMap)
+	if err := libauth.UpdateSessionTokens(ctx, sessionID,
+		newTokens.RawIDToken, newTokens.RefreshToken, newTokens.AccessTokenExpiry, roles); err != nil {
+		return err
+	}
+	session.IDToken = newTokens.RawIDToken
+	session.RefreshToken = newTokens.RefreshToken
+	session.AccessTokenExpiresAt = newTokens.AccessTokenExpiry
+	session.Roles = roles
+	return nil
 }
 
 func lockSessionRefresh(sessionID string) func() {

@@ -570,18 +570,26 @@ func (q *Queries) UpdateOrCreateSample(ctx context.Context, arg UpdateOrCreateSa
 
 const updateSessionTokens = `-- name: UpdateSessionTokens :exec
 UPDATE sessions
-SET refresh_token = $2, access_token_expires_at = $3
+SET id_token = $2, refresh_token = $3, access_token_expires_at = $4, roles = $5
 WHERE id = $1
 `
 
 type UpdateSessionTokensParams struct {
 	ID                   string
+	IDToken              sql.NullString
 	RefreshToken         sql.NullString
 	AccessTokenExpiresAt time.Time
+	Roles                []string
 }
 
 func (q *Queries) UpdateSessionTokens(ctx context.Context, arg UpdateSessionTokensParams) error {
-	_, err := q.db.ExecContext(ctx, updateSessionTokens, arg.ID, arg.RefreshToken, arg.AccessTokenExpiresAt)
+	_, err := q.db.ExecContext(ctx, updateSessionTokens,
+		arg.ID,
+		arg.IDToken,
+		arg.RefreshToken,
+		arg.AccessTokenExpiresAt,
+		pq.Array(arg.Roles),
+	)
 	return err
 }
 

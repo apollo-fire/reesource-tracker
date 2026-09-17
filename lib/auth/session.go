@@ -67,11 +67,16 @@ func GetSession(ctx context.Context, id string) (*Session, error) {
 	}, nil
 }
 
-func UpdateSessionTokens(ctx context.Context, id, refreshToken string, accessTokenExpiry time.Time) error {
+func UpdateSessionTokens(ctx context.Context, id, idToken, refreshToken string, accessTokenExpiry time.Time, roles []string) error {
+	if roles == nil {
+		roles = []string{}
+	}
 	return database.Connection.UpdateSessionTokens(ctx, database.UpdateSessionTokensParams{
 		ID:                   id,
+		IDToken:              nullString(idToken),
 		RefreshToken:         nullString(refreshToken),
 		AccessTokenExpiresAt: accessTokenExpiry,
+		Roles:                roles,
 	})
 }
 
