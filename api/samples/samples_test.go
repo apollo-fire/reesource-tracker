@@ -18,6 +18,7 @@ func setupRouter() *gin.Engine {
 	r := gin.Default()
 	group := r.Group("/api")
 	samples.Routes(group)
+	samples.MaintainerRoutes(group)
 	return r
 }
 
