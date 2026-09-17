@@ -166,7 +166,7 @@ func hydrateSession(c *gin.Context) bool {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 			return false
 		}
-		newTokens, refreshErr := oidcClient.Refresh(c.Request.Context(), session.RefreshToken)
+		newTokens, refreshErr := oidcClient.Refresh(c.Request.Context(), session.IDToken, session.RefreshToken)
 		if refreshErr != nil {
 			// Refresh token expired or revoked — clean up and force re-login.
 			_ = libauth.DeleteSession(c.Request.Context(), sessionID)

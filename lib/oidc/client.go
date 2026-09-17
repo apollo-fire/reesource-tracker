@@ -73,22 +73,22 @@ func (c *Client) Exchange(ctx context.Context, code string) (*TokenSet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("code exchange: %w", err)
 	}
-	return c.tokenSetFrom(ctx, token)
+	return c.tokenSetFrom(ctx, token, "", "")
 }
 
-func (c *Client) Refresh(ctx context.Context, refreshToken string) (*TokenSet, error) {
+func (c *Client) Refresh(ctx context.Context, rawIDToken, refreshToken string) (*TokenSet, error) {
 	src := c.cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
 	token, err := src.Token()
 	if err != nil {
 		return nil, fmt.Errorf("token refresh: %w", err)
 	}
-	return c.tokenSetFrom(ctx, token)
+	return c.tokenSetFrom(ctx, token, rawIDToken, refreshToken)
 }
 
-func (c *Client) tokenSetFrom(ctx context.Context, token *oauth2.Token) (*TokenSet, error) {
-	rawIDToken, ok := token.Extra("id_token").(string)
-	if !ok {
-		return nil, fmt.Errorf("no id_token in token response")
+func (c *Client) tokenSetFrom(ctx context.Context, token *oauth2.Token, fallbackIDToken, fallbackRefreshToken string) (*TokenSet, error) {
+	rawIDToken, err := rawIDTokenFrom(token, fallbackIDToken)
+	if err != nil {
+		return nil, err
 	}
 	idToken, err := c.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
@@ -111,13 +111,31 @@ func (c *Client) tokenSetFrom(ctx context.Context, token *oauth2.Token) (*TokenS
 	return &TokenSet{
 		RawIDToken:        rawIDToken,
 		AccessToken:       token.AccessToken,
-		RefreshToken:      token.RefreshToken,
+		RefreshToken:      refreshTokenFrom(token, fallbackRefreshToken),
 		AccessTokenExpiry: token.Expiry,
 		OIDCSid:           claims.SID,
 		Subject:           idToken.Subject,
 		Name:              claims.Name,
 		RawClaims:         raw,
 	}, nil
+}
+
+func rawIDTokenFrom(token *oauth2.Token, fallback string) (string, error) {
+	rawIDToken, _ := token.Extra("id_token").(string)
+	if rawIDToken != "" {
+		return rawIDToken, nil
+	}
+	if fallback != "" {
+		return fallback, nil
+	}
+	return "", fmt.Errorf("no id_token in token response")
+}
+
+func refreshTokenFrom(token *oauth2.Token, fallback string) string {
+	if token.RefreshToken != "" {
+		return token.RefreshToken
+	}
+	return fallback
 }
 
 // VerifyLogoutToken verifies an OIDC back-channel logout token (RFC OIDC-BACKCHANNEL)
