@@ -121,7 +121,6 @@
                 </Table>
             </div>
         </div>
-        <div class="mt-4 w-full flex flex-row self-end justify-end">
-        </div>
+        <div class="mt-4 w-full flex flex-row self-end justify-end"> </div>
     </Card.Content>
 </Card.Root>
