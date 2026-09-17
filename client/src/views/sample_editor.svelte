@@ -127,9 +127,8 @@
 <form
     onsubmit={saveSample}
     class="flex flex-col gap-4 p-4 min-h-full max-h-full overflow-auto">
-    <div
-        class="flex flex-row gap-6 w-full flex-wrap h-full overflow-auto flex-grow">
-        <Card.Root class="flex-grow">
+    <div class="flex flex-row gap-6 w-full flex-wrap h-full overflow-auto grow">
+        <Card.Root class="grow">
             <Card.Header>
                 <Card.Title>Edit Sample: {sample.DisplayId}</Card.Title>
                 <Card.Description>
@@ -137,7 +136,7 @@
                     location, state, owner, and mods.
                 </Card.Description>
             </Card.Header>
-            <Card.Content>
+            <Card.Content class="flex flex-col justify-between h-full">
                 <div class="flex flex-col gap-6">
                     <div>
                         <Label for="variant-select" class="mb-2"
@@ -178,10 +177,13 @@
                             id="owner-select" />
                     </div>
                 </div>
+                <div class="mt-8">
+                    <Button type="submit" class="w-full">Save Changes</Button>
+                </div>
             </Card.Content>
         </Card.Root>
 
-        <Card.Root class="flex-grow max-h-full overflow-y-auto">
+        <Card.Root class="grow max-h-full overflow-y-auto">
             <Card.Header>
                 <Card.Title>Mods</Card.Title>
                 <Card.Description>
@@ -290,11 +292,4 @@
             </Card.Content>
         </Card.Root>
     </div>
-    <Card.Root>
-        <Card.Content>
-            <div>
-                <Button type="submit" class="w-full">Save Changes</Button>
-            </div>
-        </Card.Content>
-    </Card.Root>
 </form>
