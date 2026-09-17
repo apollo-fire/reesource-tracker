@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -84,8 +83,6 @@ func callback(c *gin.Context) {
 	}
 
 	roles := extractRolesFromContext(c, tokens)
-	log.Printf("callback: sub=%s name=%q claim_path=%q extracted_roles=%v claims=%s",
-		tokens.Subject, tokens.Name, liboidc.Get().RoleClaimPath(), roles, tokens.RawClaims)
 
 	// JIT provision: upsert user by OIDC subject.
 	newID, _ := uuid.New().MarshalBinary()
@@ -117,7 +114,6 @@ func callback(c *gin.Context) {
 		ExpiresAt:            expiry,
 	})
 	if err != nil {
-		log.Printf("create session: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not persist session"})
 		return
 	}
