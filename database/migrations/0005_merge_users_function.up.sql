@@ -20,6 +20,7 @@ BEGIN
            AND tc.constraint_schema = ccu.constraint_schema
            AND tc.constraint_name = ccu.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND ccu.table_schema = 'public'
           AND ccu.table_name = 'users'
           AND ccu.column_name = 'id'
     LOOP
