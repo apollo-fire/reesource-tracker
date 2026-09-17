@@ -28,6 +28,6 @@ BEGIN
             USING target_id, legacy_id;
     END LOOP;
 
-    DELETE FROM users WHERE id = legacy_id;
+    DELETE FROM public.users WHERE id = legacy_id;
 END;
 $$ LANGUAGE plpgsql;
