@@ -167,7 +167,45 @@ UPDATE
 SET
     name = EXCLUDED.name;
 
+-- name: UpdateUser :execrows
+UPDATE users
+SET
+    name = $2
+WHERE
+    id = $1;
+
 -- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE
     id = $1;
+
+-- name: GetUserByOIDCSub :one
+SELECT * FROM users WHERE oidc_sub = $1;
+
+-- name: UpsertUserByOIDCSub :one
+INSERT INTO users (id, name, oidc_sub)
+VALUES ($1, $2, $3)
+ON CONFLICT (oidc_sub) WHERE oidc_sub IS NOT NULL DO UPDATE
+SET name = EXCLUDED.name
+RETURNING *;
+
+-- name: CreateSession :exec
+INSERT INTO sessions (id, user_id, roles, oidc_sid, refresh_token, access_token_expires_at, expires_at, id_token)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+
+-- name: GetSessionByID :one
+SELECT * FROM sessions WHERE id = $1 AND expires_at > NOW();
+
+-- name: UpdateSessionTokens :exec
+UPDATE sessions
+SET id_token = $2, refresh_token = $3, access_token_expires_at = $4, roles = $5
+WHERE id = $1;
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE id = $1;
+
+-- name: DeleteSessionsByUserID :exec
+DELETE FROM sessions WHERE user_id = $1;
+
+-- name: DeleteSessionByOIDCSID :exec
+DELETE FROM sessions WHERE oidc_sid = $1;

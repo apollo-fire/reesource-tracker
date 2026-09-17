@@ -64,6 +64,18 @@ type SampleNote struct {
 	TimeMade time.Time
 }
 
+type Session struct {
+	ID                   string
+	UserID               []byte
+	Roles                []string
+	OidcSid              sql.NullString
+	RefreshToken         sql.NullString
+	AccessTokenExpiresAt time.Time
+	ExpiresAt            time.Time
+	CreatedAt            time.Time
+	IDToken              sql.NullString
+}
+
 type Tag struct {
 	ID        []byte
 	Name      string
@@ -71,6 +83,7 @@ type Tag struct {
 }
 
 type User struct {
-	ID   []byte
-	Name string
+	ID      []byte
+	Name    string
+	OidcSub sql.NullString
 }

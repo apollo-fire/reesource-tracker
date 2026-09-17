@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"reesource-tracker/api/products"
@@ -15,12 +16,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func routeMethodsForPath(routes gin.RoutesInfo, path string) []string {
+	var methods []string
+	for _, route := range routes {
+		if route.Path == path {
+			methods = append(methods, route.Method)
+		}
+	}
+	slices.Sort(methods)
+	return methods
+}
+
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	group := r.Group("/api")
 	products.Routes(group)
 	return r
+}
+
+func TestReadRoutes_RegisterOnlyReadEndpoints(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	products.ReadRoutes(r.Group("/api"))
+
+	routes := r.Routes()
+	assert.Equal(t, []string{"GET"}, routeMethodsForPath(routes, "/api/products"))
+	assert.Equal(t, []string{"GET"}, routeMethodsForPath(routes, "/api/product/:product_id"))
+	assert.Empty(t, routeMethodsForPath(routes, "/api/product"))
+}
+
+func TestMaintainerRoutes_RegisterOnlyMutationEndpoints(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	products.MaintainerRoutes(r.Group("/api"))
+
+	routes := r.Routes()
+	assert.Equal(t, []string{"POST"}, routeMethodsForPath(routes, "/api/product"))
+	assert.Equal(t, []string{"DELETE", "POST"}, routeMethodsForPath(routes, "/api/product/:product_id"))
+	assert.Empty(t, routeMethodsForPath(routes, "/api/products"))
 }
 
 func TestCreateProduct_Success(t *testing.T) {

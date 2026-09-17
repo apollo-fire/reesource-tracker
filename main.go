@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reesource-tracker/api"
+	"reesource-tracker/api/auth"
+	"reesource-tracker/lib/config"
 	"reesource-tracker/lib/database"
 	"runtime"
 	"strings"
@@ -70,6 +72,16 @@ func main() {
 	err := database.Connect(ctx)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err.Error())
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal("Failed to load app config:", err.Error())
+	}
+	if err := auth.Initialize(ctx,
+		cfg.OIDC.IssuerURL, cfg.OIDC.ClientID, cfg.OIDC.ClientSecret,
+		cfg.BaseURL, cfg.OIDC.RoleClaimPath, cfg.OIDC.RoleMap,
+	); err != nil {
+		log.Fatal("Failed to initialise OIDC:", err.Error())
 	}
 	api.Routes(r)
 	r.GET("/", func(c *gin.Context) {

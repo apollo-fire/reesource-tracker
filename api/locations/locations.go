@@ -19,9 +19,17 @@ type LocationResponse struct {
 }
 
 func Routes(route *gin.RouterGroup) {
+	ReadRoutes(route)
+	MaintainerRoutes(route)
+}
+
+func ReadRoutes(route *gin.RouterGroup) {
 	route.GET("/locations", getLocations)
-	route.POST("/location", createLocation)
 	route.GET("/location/:location_id", getLocation)
+}
+
+func MaintainerRoutes(route *gin.RouterGroup) {
+	route.POST("/location", createLocation)
 	route.POST("/location/:location_id", updateLocation)
 	route.DELETE("/location/:location_id", deleteLocation)
 }
