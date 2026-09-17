@@ -2,6 +2,8 @@ package users_test
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupRouter() *gin.Engine {
@@ -44,6 +47,52 @@ func TestUpdateUser_InvalidID(t *testing.T) {
 	r.ServeHTTP(w, req)
 	assert.Equal(t, 400, w.Code)
 	assert.Contains(t, w.Body.String(), "error")
+}
+
+func TestUpdateUser_NotFound(t *testing.T) {
+	mock_db.ResetMockDB()
+	database.Connection = mock_db.MockConnection
+	r := setupRouter()
+
+	body := map[string]string{"name": "Updated User"}
+	jsonBody, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/user/123e4567-e89b-12d3-a456-426614174000", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 404, w.Code)
+	assert.Contains(t, w.Body.String(), sql.ErrNoRows.Error())
+}
+
+func TestUpdateUser_Success(t *testing.T) {
+	mock_db.ResetMockDB()
+	database.Connection = mock_db.MockConnection
+	r := setupRouter()
+
+	userID := []byte{
+		0x12, 0x3e, 0x45, 0x67, 0xe8, 0x9b, 0x12, 0xd3,
+		0xa4, 0x56, 0x42, 0x66, 0x14, 0x17, 0x40, 0x00,
+	}
+	_, err := database.Connection.UpsertUserByOIDCSub(context.Background(), database.UpsertUserByOIDCSubParams{
+		ID:      userID,
+		Name:    "Original User",
+		OidcSub: sql.NullString{String: "seed-user", Valid: true},
+	})
+	require.NoError(t, err)
+
+	body := map[string]string{"name": "Updated User"}
+	jsonBody, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/user/123e4567-e89b-12d3-a456-426614174000", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, 200, w.Code)
+
+	user, err := database.Connection.GetUserByID(context.Background(), userID)
+	require.NoError(t, err)
+	assert.Equal(t, "Updated User", user.Name)
 }
 
 func TestDeleteUser_MissingID(t *testing.T) {

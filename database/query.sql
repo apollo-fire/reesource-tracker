@@ -167,6 +167,13 @@ UPDATE
 SET
     name = EXCLUDED.name;
 
+-- name: UpdateUser :execrows
+UPDATE users
+SET
+    name = $2
+WHERE
+    id = $1;
+
 -- name: DeleteUserByID :exec
 DELETE FROM users
 WHERE

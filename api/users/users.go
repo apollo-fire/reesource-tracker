@@ -1,6 +1,7 @@
 package users
 
 import (
+	"database/sql"
 	"net/http"
 	"reesource-tracker/api/sync"
 	"reesource-tracker/lib/database"
@@ -79,12 +80,16 @@ func updateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
 		return
 	}
-	err := database.Connection.UpsertUser(c, database.UpsertUserParams{
+	rows, err := database.Connection.UpdateUser(c, database.UpdateUserParams{
 		ID:   binary_uuid,
 		Name: req.Name,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": sql.ErrNoRows.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success"})

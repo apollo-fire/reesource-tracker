@@ -585,6 +585,27 @@ func (q *Queries) UpdateSessionTokens(ctx context.Context, arg UpdateSessionToke
 	return err
 }
 
+const updateUser = `-- name: UpdateUser :execrows
+UPDATE users
+SET
+    name = $2
+WHERE
+    id = $1
+`
+
+type UpdateUserParams struct {
+	ID   []byte
+	Name string
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUser, arg.ID, arg.Name)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const upsertLocation = `-- name: UpsertLocation :exec
 INSERT INTO
     locations (id, name, description, parent_location_id)
