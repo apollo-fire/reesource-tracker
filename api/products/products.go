@@ -19,9 +19,17 @@ type ProductResponse struct {
 }
 
 func Routes(route *gin.RouterGroup) {
+	ReadRoutes(route)
+	MaintainerRoutes(route)
+}
+
+func ReadRoutes(route *gin.RouterGroup) {
 	route.GET("/products", getProducts)
-	route.POST("/product", createProduct)
 	route.GET("/product/:product_id", getProduct)
+}
+
+func MaintainerRoutes(route *gin.RouterGroup) {
+	route.POST("/product", createProduct)
 	route.POST("/product/:product_id", updateProduct)
 	route.DELETE("/product/:product_id", deleteProduct)
 }

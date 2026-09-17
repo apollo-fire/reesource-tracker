@@ -22,14 +22,16 @@ func Routes(route *gin.Engine) {
 	// All application routes require an authenticated session.
 	protected := api.Group("")
 	protected.Use(middleware.RequireAuthenticated())
+	products.ReadRoutes(protected)
+	locations.ReadRoutes(protected)
 	samples.Routes(protected)
 	sync.Routes(protected)
 
 	// Maintainer+ routes: product/location management and sample code provisioning.
 	maintainer := protected.Group("")
 	maintainer.Use(middleware.RequireRole(libauth.RoleMaintainer))
-	products.Routes(maintainer)
-	locations.Routes(maintainer)
+	products.MaintainerRoutes(maintainer)
+	locations.MaintainerRoutes(maintainer)
 	samples.MaintainerRoutes(maintainer)
 
 	// Admin-only routes: user management.

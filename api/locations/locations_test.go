@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"reesource-tracker/api/locations"
@@ -15,12 +16,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func routeMethodsForPath(routes gin.RoutesInfo, path string) []string {
+	var methods []string
+	for _, route := range routes {
+		if route.Path == path {
+			methods = append(methods, route.Method)
+		}
+	}
+	slices.Sort(methods)
+	return methods
+}
+
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	group := r.Group("/api")
 	locations.Routes(group)
 	return r
+}
+
+func TestReadRoutes_RegisterOnlyReadEndpoints(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	locations.ReadRoutes(r.Group("/api"))
+
+	routes := r.Routes()
+	assert.Equal(t, []string{"GET"}, routeMethodsForPath(routes, "/api/locations"))
+	assert.Equal(t, []string{"GET"}, routeMethodsForPath(routes, "/api/location/:location_id"))
+	assert.Empty(t, routeMethodsForPath(routes, "/api/location"))
+}
+
+func TestMaintainerRoutes_RegisterOnlyMutationEndpoints(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	locations.MaintainerRoutes(r.Group("/api"))
+
+	routes := r.Routes()
+	assert.Equal(t, []string{"POST"}, routeMethodsForPath(routes, "/api/location"))
+	assert.Equal(t, []string{"DELETE", "POST"}, routeMethodsForPath(routes, "/api/location/:location_id"))
+	assert.Empty(t, routeMethodsForPath(routes, "/api/locations"))
 }
 
 func TestCreateLocation_MissingName(t *testing.T) {
