@@ -4,8 +4,10 @@
 
     import { AppStore } from '$lib/components/app_store';
     import { SampleState } from '$lib/components/sample';
+    import UserSelect from '$lib/components/selects/user-select.svelte';
     import { Button } from '$lib/components/ui/button';
     import * as Card from '$lib/components/ui/card';
+    import * as Dialog from '$lib/components/ui/dialog';
     import { Input } from '$lib/components/ui/input';
     import {
         Table,
@@ -54,6 +56,35 @@
             return;
         }
         toast.success('User deleted.');
+    }
+
+    let mergeDialogUser: User | null = $state(null);
+    let mergeTargetId: string = $state('');
+
+    let oidcUserOptions = $derived(
+        $AppStore.users
+            .filter((u) => u.hasOidc)
+            .map((u) => ({ value: u.id, label: u.name })),
+    );
+
+    function openMergeDialog(user: User) {
+        mergeDialogUser = user;
+        mergeTargetId = '';
+    }
+
+    async function confirmMerge() {
+        if (!mergeDialogUser || !mergeTargetId) return;
+        const res = await fetch(`/api/user/${mergeDialogUser.id}/merge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_user_id: mergeTargetId }),
+        });
+        if (!res.ok) {
+            toast.error('Failed to assign user to account.');
+            return;
+        }
+        toast.success('User assigned to account.');
+        mergeDialogUser = null;
     }
 
     const valid_states = Object.values(SampleState).filter(
@@ -108,6 +139,17 @@
                                     </TableCell>
                                 {/each}
                                 <TableCell>
+                                    {#if !user.hasOidc}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onclick={() =>
+                                                openMergeDialog(user)}>
+                                            Assign to Account
+                                        </Button>
+                                    {/if}
+                                </TableCell>
+                                <TableCell>
                                     <Button
                                         type="button"
                                         variant="destructive"
@@ -124,3 +166,38 @@
         <div class="mt-4 w-full flex flex-row self-end justify-end"> </div>
     </Card.Content>
 </Card.Root>
+
+<Dialog.Root
+    open={mergeDialogUser !== null}
+    onOpenChange={(open) => {
+        if (!open) mergeDialogUser = null;
+    }}>
+    <Dialog.Content>
+        <Dialog.Header>
+            <Dialog.Title>Assign to Account</Dialog.Title>
+            <Dialog.Description>
+                Select the OIDC-linked account that "{mergeDialogUser?.name}"
+                should be merged into. This will reassign all of their samples
+                and cannot be undone.
+            </Dialog.Description>
+        </Dialog.Header>
+        <UserSelect
+            bind:bindValue={mergeTargetId}
+            options={oidcUserOptions}
+            placeholder="Select an account" />
+        <Dialog.Footer>
+            <Button
+                type="button"
+                variant="outline"
+                onclick={() => (mergeDialogUser = null)}>
+                Cancel
+            </Button>
+            <Button
+                type="button"
+                disabled={!mergeTargetId}
+                onclick={confirmMerge}>
+                Assign
+            </Button>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>

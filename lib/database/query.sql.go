@@ -490,6 +490,20 @@ func (q *Queries) ListSamples(ctx context.Context) ([]ListSamplesRow, error) {
 	return items, nil
 }
 
+const mergeUsers = `-- name: MergeUsers :exec
+SELECT merge_users($1, $2)
+`
+
+type MergeUsersParams struct {
+	TargetID []byte
+	LegacyID []byte
+}
+
+func (q *Queries) MergeUsers(ctx context.Context, arg MergeUsersParams) error {
+	_, err := q.db.ExecContext(ctx, mergeUsers, arg.TargetID, arg.LegacyID)
+	return err
+}
+
 const removeSampleMod = `-- name: RemoveSampleMod :exec
 UPDATE sample_mods
 SET

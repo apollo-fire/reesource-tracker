@@ -11,14 +11,16 @@ import (
 )
 
 type UserResponse struct {
-	ID   []byte `json:"ID"`
-	Name string `json:"Name"`
+	ID      []byte `json:"ID"`
+	Name    string `json:"Name"`
+	HasOIDC bool   `json:"HasOIDC"`
 }
 
 func Routes(route *gin.RouterGroup) {
 	route.GET("/users", getUsers)
 	route.GET("/user/:user_id", getUser)
 	route.POST("/user/:user_id", updateUser)
+	route.POST("/user/:user_id/merge", mergeUser)
 	route.DELETE("/user/:user_id", deleteUser)
 }
 
@@ -59,7 +61,69 @@ func getUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, UserResponse{ID: user.ID, Name: user.Name})
+	c.JSON(http.StatusOK, UserResponse{ID: user.ID, Name: user.Name, HasOIDC: user.OidcSub.Valid})
+}
+
+// POST /user/:user_id/merge — reassigns all data owned by the legacy (non-OIDC)
+// user at :user_id to the OIDC-linked user given in the request body, then
+// deletes the legacy user.
+func mergeUser(c *gin.Context) {
+	legacyUserID := c.Param("user_id")
+	if legacyUserID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
+		return
+	}
+	var req struct {
+		TargetUserID string `json:"target_user_id"`
+	}
+	if err := c.ShouldBind(&req); err != nil || req.TargetUserID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "target_user_id required"})
+		return
+	}
+
+	legacyID, errMsg, ok := id_helper.MustParseAndMarshalUUID(legacyUserID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	targetID, errMsg, ok := id_helper.MustParseAndMarshalUUID(req.TargetUserID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+
+	legacyUser, err := database.Connection.GetUserByID(c, legacyID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "legacy user not found"})
+		return
+	}
+	if legacyUser.OidcSub.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user already has an OIDC account linked"})
+		return
+	}
+
+	targetUser, err := database.Connection.GetUserByID(c, targetID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "target user not found"})
+		return
+	}
+	if !targetUser.OidcSub.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "target user has no OIDC account linked"})
+		return
+	}
+
+	err = database.Connection.MergeUsers(c, database.MergeUsersParams{
+		TargetID: targetUser.ID,
+		LegacyID: legacyUser.ID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "merged"})
+	sync.BroadcastEvent("users_updated", gin.H{})
+	sync.BroadcastEvent("samples_updated", gin.H{})
 }
 
 func updateUser(c *gin.Context) {
@@ -104,7 +168,7 @@ func getUsers(c *gin.Context) {
 	}
 	var responses []UserResponse
 	for _, user := range res {
-		responses = append(responses, UserResponse{ID: user.ID, Name: user.Name})
+		responses = append(responses, UserResponse{ID: user.ID, Name: user.Name, HasOIDC: user.OidcSub.Valid})
 	}
 	c.JSON(http.StatusOK, responses)
 }

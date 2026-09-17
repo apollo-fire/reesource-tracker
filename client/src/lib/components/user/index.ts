@@ -7,11 +7,13 @@ import { SampleState } from '$lib/components/sample';
 export class User {
     public id: string;
     public name: string;
+    public hasOidc: boolean;
     private app_store: Writable<AppData>;
     constructor(data: Record<string, unknown>, app_store: Writable<AppData>) {
         this.id =
             typeof data.ID === 'string' ? Base64UUIDToString(data.ID) : '';
         this.name = typeof data.Name === 'string' ? data.Name : '';
+        this.hasOidc = typeof data.HasOIDC === 'boolean' ? data.HasOIDC : false;
         this.app_store = app_store;
     }
 

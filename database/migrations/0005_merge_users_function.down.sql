@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS merge_users(BYTEA, BYTEA);
