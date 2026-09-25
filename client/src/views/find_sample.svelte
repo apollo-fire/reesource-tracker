@@ -3,6 +3,7 @@
     import { toast } from 'svelte-sonner';
 
     import { AppStore } from '$lib/components/app_store';
+    import { validateSampleID } from '$lib/components/id_helper';
     import QRScanner from '$lib/components/qr_scanner/qr_scanner.svelte';
     import * as Alert from '$lib/components/ui/alert';
     import { Button } from '$lib/components/ui/button';
@@ -17,9 +18,15 @@
 
     $effect(() => {
         if (new_sample.length == 6) {
-            window.location.assign(
-                `/app?sample_id=${new_sample.slice(0, 2)}-${new_sample.slice(2, 4)}-${new_sample.slice(4, 6)}`,
-            );
+            const assembled = `${new_sample.slice(0, 2)}-${new_sample.slice(2, 4)}-${new_sample.slice(4, 6)}`;
+            if (!validateSampleID(assembled)) {
+                toast.error(
+                    'Invalid sample ID. Please enter a valid base36 ID (e.g. 1Z-4I-6T).',
+                );
+                new_sample = '';
+                return;
+            }
+            window.location.assign(`/app?sample_id=${assembled.toUpperCase()}`);
         }
     });
     // No need to enumerate video inputs here; handled by QRScanner
